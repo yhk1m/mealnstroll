@@ -1,0 +1,146 @@
+<!-- © 2026 김용현 -->
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>🍱🚶🏻‍➡️급식먹고산책</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="scene"></canvas>
+
+      <div class="copyright">
+        ⓒ 2026. 양정고등학교 지리교사 김용현 |
+        <a href="https://bgnl.kr" target="_blank" rel="noopener noreferrer">https://bgnl.kr</a>
+      </div>
+
+      <aside id="sidebar">
+        <header class="sidebar-header">
+          <div class="title-row">
+            <h1>🍱🚶🏻‍➡️급식먹고산책</h1>
+            <button id="help-btn" type="button" aria-label="사용법" title="사용법">?</button>
+          </div>
+          <p class="tagline">급식 후 산책하며 나누는 이야기</p>
+          <div class="me-row">
+            <span class="me-avatar" id="me-avatar"></span>
+            <input id="me-name" maxlength="12" placeholder="닉네임" />
+            <button id="me-refresh" title="새로 뽑기">🎲</button>
+          </div>
+          <div class="online-row">
+            <span class="dot"></span>
+            <span id="online-count">0</span>명 산책 중
+          </div>
+        </header>
+
+        <div id="notice-banner" class="notice-banner" hidden>
+          <button class="notice-toggle" id="notice-toggle" type="button" aria-expanded="true" aria-controls="notice-body">
+            <span class="notice-icon">📢</span>
+            <span class="notice-title">공지</span>
+            <span class="notice-meta" id="notice-meta"></span>
+            <span class="notice-chevron" aria-hidden="true">▾</span>
+          </button>
+          <div class="notice-body" id="notice-body">
+            <div class="notice-text" id="notice-text"></div>
+          </div>
+        </div>
+
+        <ul id="chat-log"></ul>
+
+        <form id="chat-form">
+          <input id="chat-input" maxlength="120" placeholder="메시지" autocomplete="off" />
+          <button type="submit">보내기</button>
+        </form>
+      </aside>
+    </div>
+
+    <div id="admin-panel" class="admin-panel" hidden>
+      <div class="admin-header">
+        <span class="admin-badge">🔐 관리자</span>
+        <button id="admin-close" type="button" aria-label="닫기">×</button>
+      </div>
+      <label class="admin-label" for="admin-notice-input">공지 내용</label>
+      <textarea id="admin-notice-input" maxlength="200" rows="2" placeholder="모두에게 보일 공지를 적으세요"></textarea>
+
+      <label class="admin-label" for="admin-duration">게시 기간</label>
+      <select id="admin-duration" class="admin-select">
+        <option value="">무제한</option>
+        <option value="600000">10분</option>
+        <option value="1800000">30분</option>
+        <option value="3600000">1시간</option>
+        <option value="10800000">3시간</option>
+        <option value="21600000">6시간</option>
+        <option value="today">오늘까지(자정)</option>
+        <option value="86400000">1일</option>
+        <option value="259200000">3일</option>
+        <option value="604800000">7일</option>
+        <option value="2592000000">30일</option>
+      </select>
+
+      <div class="admin-actions">
+        <button id="admin-post" type="button" class="admin-btn primary">공지 올리기</button>
+        <button id="admin-clear" type="button" class="admin-btn">공지 내리기</button>
+      </div>
+      <p class="admin-hint">링크를 포함하면 자동으로 하이퍼링크가 돼요.</p>
+    </div>
+
+    <div id="emoji-picker" class="help-modal" hidden>
+      <div class="help-backdrop" data-emoji-close></div>
+      <div class="help-card emoji-card" role="dialog" aria-modal="true" aria-labelledby="emoji-title">
+        <button class="help-close" type="button" data-emoji-close aria-label="닫기">×</button>
+        <h2 id="emoji-title">이모지 고르기</h2>
+        <p class="emoji-hint">마음에 드는 얼굴을 골라보세요.</p>
+        <div class="emoji-grid" id="emoji-grid"></div>
+
+        <h3 class="picker-sub">배경 원 색</h3>
+        <div class="swatch-row" id="bg-swatches">
+          <label class="swatch-custom" title="직접 고르기" aria-label="직접 색 고르기">
+            <input type="color" id="bg-custom" value="#fff7e8" />
+            <span class="swatch-custom-ring">🎨</span>
+          </label>
+        </div>
+
+        <h3 class="picker-sub">옷 색</h3>
+        <div class="swatch-row" id="outfit-swatches">
+          <label class="swatch-custom" title="직접 고르기" aria-label="직접 옷 색 고르기">
+            <input type="color" id="outfit-custom" value="#ff8a4c" />
+            <span class="swatch-custom-ring">🎨</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div id="help-modal" class="help-modal" hidden>
+      <div class="help-backdrop" data-close></div>
+      <div class="help-card" role="dialog" aria-modal="true" aria-labelledby="help-title">
+        <button class="help-close" type="button" data-close aria-label="닫기">×</button>
+        <h2 id="help-title">급식먹고산책 사용법</h2>
+        <ol class="help-list">
+          <li><b>닉네임 정하기</b> — 오른쪽 위에 닉네임을 입력하거나 🎲 버튼으로 랜덤하게 뽑아요.</li>
+          <li><b>이모지 바꾸기</b> — 캐릭터 머리 또는 사이드바 아바타를 클릭하면 이모지를 고를 수 있어요.</li>
+          <li><b>운동장으로 나가기</b> — 왼쪽 화면에서 내 캐릭터가 학교 앞을 거닐어요. 다른 선생님들도 함께 걷는 게 보여요.</li>
+          <li><b>대화 나누기</b> — 아래 입력창에 메시지를 적고 Enter. 내 캐릭터 머리 위로 말풍선이 떠요.</li>
+          <li><b>함께 걷는 사람 수</b> — "○명 산책 중" 표시로 지금 같이 있는 선생님 수를 확인할 수 있어요.</li>
+        </ol>
+
+        <h3 class="help-sub">오래 걸을수록 화려해져요</h3>
+        <p class="help-meta">접속 시간이 쌓이면 <b>20분마다 한 단계씩</b>(최대 5시간·15단계) 속도가 빨라지고 효과가 추가돼요.</p>
+        <ul class="level-list">
+          <li><span class="lv">0단계</span> <span class="lv-time">0분~</span> 기본 속도로 산책 시작</li>
+          <li><span class="lv">1단계</span> <span class="lv-time">20분~</span> 은은한 오라가 켜져요 ✨</li>
+          <li><span class="lv">3단계</span> <span class="lv-time">1시간~</span> 무지개 반짝이가 주위를 돌아요</li>
+          <li><span class="lv">7단계</span> <span class="lv-time">2시간 20분~</span> 펄싱 무지개 할로 등장</li>
+          <li><span class="lv">10단계</span> <span class="lv-time">3시간 20분~</span> 반짝이가 더 커져요</li>
+          <li><span class="lv">11단계</span> <span class="lv-time">3시간 40분~</span> 머리 위에 👑 등장</li>
+          <li><span class="lv">14단계</span> <span class="lv-time">4시간 40분~</span> 별빛 광선이 뻗쳐요</li>
+          <li><span class="lv">15단계</span> <span class="lv-time">5시간~</span> 최대치, 속도 약 2배</li>
+        </ul>
+
+        <p class="help-tip">💡 점심 먹고 나른할 때, 운동장 한 바퀴 돌며 잠깐 수다 떨기에 딱 좋아요.</p>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
