@@ -627,7 +627,6 @@ export function createScene(canvas, theme) {
     drawGround(theme);
     drawDecor(theme, now);
     drawSchool(theme);
-    drawGate();
 
     // sort avatars by y so ones in front overlap correctly
     const withPos = avatars.map(a => ({ a, p: positionFor(a, now) }));
