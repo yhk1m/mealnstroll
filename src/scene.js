@@ -111,14 +111,17 @@ export function createScene(canvas, theme) {
   let bgImgReady = false;
   tryImage(bgImg, 'background', ['svg', 'png', 'jpg', 'jpeg', 'webp'], () => { bgImgReady = true; });
 
+  // Unique per page load, so a regular refresh (F5) always picks up the
+  // latest public/ image without needing a hard reload.
+  const CACHE_BUSTER = Date.now();
   function tryImage(img, name, exts, onReady) {
     let i = 0;
     img.onload = () => onReady?.();
     img.onerror = () => {
       i += 1;
-      if (i < exts.length) img.src = `/${name}.${exts[i]}`;
+      if (i < exts.length) img.src = `/${name}.${exts[i]}?v=${CACHE_BUSTER}`;
     };
-    img.src = `/${name}.${exts[0]}`;
+    img.src = `/${name}.${exts[0]}?v=${CACHE_BUSTER}`;
   }
 
   function resize() {
