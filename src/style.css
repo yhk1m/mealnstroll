@@ -1532,23 +1532,29 @@ html, body {
   gap: 8px;
   padding: 6px 8px;
   border: none;
-  background: transparent;
+  background: #fff;
   border-radius: 6px;
   font-family: inherit;
   font-size: 13px;
   color: var(--ink);
   cursor: pointer;
   text-align: left;
-  transition: background 0.08s;
+  transition: background 0.08s, color 0.08s, box-shadow 0.08s;
 }
 
-.mention-item:hover,
 .mention-item.selected {
-  background: #fff1da;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(255, 138, 76, 0.35);
+}
+
+.mention-item.selected .mention-name {
+  color: #fff;
 }
 
 .mention-item .mention-emoji {
-  font-size: 16px;
+  font-size: 18px;
   line-height: 1;
   flex-shrink: 0;
 }
@@ -1559,6 +1565,7 @@ html, body {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 500;
+  color: var(--ink);
 }
 
 #chat-form {

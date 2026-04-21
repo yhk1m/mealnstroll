@@ -220,6 +220,7 @@ function closeHelpModal() {
     localStorage.setItem(HELP_DISMISS_KEY, todayYmd());
   }
   helpModal.hidden = true;
+  document.getElementById('chat-input').focus();
 }
 
 helpBtn.addEventListener('click', () => {
@@ -943,6 +944,30 @@ document.addEventListener('keydown', (e) => {
     if (!fortuneResultModal.hidden) fortuneResultModal.hidden = true;
   }
 });
+
+// Press Enter anywhere (when not typing in another field) to jump into the chat
+// input. On first visit this also auto-dismisses the help modal so newcomers
+// can start chatting immediately.
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter' || e.isComposing) return;
+  const active = document.activeElement;
+  if (active && /^(INPUT|TEXTAREA|SELECT|BUTTON)$/i.test(active.tagName)) return;
+  if (active && active.isContentEditable) return;
+  if (gameOpen || sleepersOpen) return;
+  if (!emojiModal.hidden || !fortuneFormModal.hidden || !fortuneResultModal.hidden) return;
+  if (!helpModal.hidden) closeHelpModal();
+  const chatInput = document.getElementById('chat-input');
+  if (chatInput) {
+    e.preventDefault();
+    chatInput.focus();
+  }
+});
+
+// If the help modal isn't showing on load, park focus on the chat input so a
+// plain Enter works from the very first keypress.
+if (helpModal.hidden) {
+  document.getElementById('chat-input').focus();
+}
 
 // ---------- notice banner ----------
 const noticeBanner = document.getElementById('notice-banner');
