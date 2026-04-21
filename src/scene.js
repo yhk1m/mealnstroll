@@ -99,18 +99,6 @@ export function createScene(canvas, theme) {
   let rx = 0, ry = 0; // orbit radii
   const decorSeed = Math.random();
 
-  // Optional school image. Drop any of these into /public/ to use it:
-  //   school.svg, school.png, school.jpg, school.jpeg, school.webp
-  const schoolImg = new Image();
-  let schoolImgReady = false;
-  tryImage(schoolImg, 'school', ['svg', 'png', 'jpg', 'jpeg', 'webp'], () => { schoolImgReady = true; });
-
-  // Optional full-canvas background. Drop any of these into /public/:
-  //   background.svg, background.png, background.jpg, background.jpeg, background.webp
-  const bgImg = new Image();
-  let bgImgReady = false;
-  tryImage(bgImg, 'background', ['svg', 'png', 'jpg', 'jpeg', 'webp'], () => { bgImgReady = true; });
-
   // Unique per page load, so a regular refresh (F5) always picks up the
   // latest public/ image without needing a hard reload.
   const CACHE_BUSTER = Date.now();
@@ -123,6 +111,18 @@ export function createScene(canvas, theme) {
     };
     img.src = `/${name}.${exts[0]}?v=${CACHE_BUSTER}`;
   }
+
+  // Optional school image. Drop any of these into /public/ to use it:
+  //   school.svg, school.png, school.jpg, school.jpeg, school.webp
+  const schoolImg = new Image();
+  let schoolImgReady = false;
+  tryImage(schoolImg, 'school', ['svg', 'png', 'jpg', 'jpeg', 'webp'], () => { schoolImgReady = true; });
+
+  // Optional full-canvas background. Drop any of these into /public/:
+  //   background.svg, background.png, background.jpg, background.jpeg, background.webp
+  const bgImg = new Image();
+  let bgImgReady = false;
+  tryImage(bgImg, 'background', ['svg', 'png', 'jpg', 'jpeg', 'webp'], () => { bgImgReady = true; });
 
   function resize() {
     const rect = canvas.getBoundingClientRect();
@@ -179,16 +179,22 @@ export function createScene(canvas, theme) {
       ctx.fill();
     }
 
-    // running track (thick rhombus outline) — always on top so character path stays visible
-    ctx.strokeStyle = t.track;
-    ctx.lineWidth = 36;
+    // Dark outline underneath so the track is visible on any background.
     ctx.lineJoin = 'round';
+    ctx.strokeStyle = 'rgba(60,40,20,0.85)';
+    ctx.lineWidth = 42;
     rhombusPath(rx, ry);
     ctx.stroke();
 
-    // track lane lines (dashed rhombus)
-    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-    ctx.lineWidth = 1;
+    // Main running track surface.
+    ctx.strokeStyle = t.track;
+    ctx.lineWidth = 36;
+    rhombusPath(rx, ry);
+    ctx.stroke();
+
+    // Dashed lane lines on top.
+    ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+    ctx.lineWidth = 1.5;
     ctx.setLineDash([6, 6]);
     rhombusPath(rx, ry);
     ctx.stroke();
