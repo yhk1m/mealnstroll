@@ -189,7 +189,11 @@ html, body {
 
 /* ---------- fortune modal ---------- */
 .fortune-form-card { max-width: 460px; }
-.fortune-result-card { max-width: 520px; padding-top: 18px; }
+.fortune-result-card {
+  max-width: 520px;
+  max-height: 94vh;
+  padding: 16px 18px 12px;
+}
 
 .fortune-intro {
   margin: 0 0 14px;
@@ -259,41 +263,41 @@ html, body {
 .fortune-result {
   background: #fffcf5;
   border-radius: 10px;
-  padding: 18px 16px 12px;
+  padding: 12px 12px 8px;
   border: 1.5px solid #e8dfc9;
 }
 
 .fortune-header {
   text-align: center;
   border-bottom: 1.5px dashed #d8c9a3;
-  padding-bottom: 10px;
-  margin-bottom: 12px;
+  padding-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .fortune-iljin {
   font-family: "Noto Serif KR", "DungGeunMo", serif;
-  font-size: 14px;
+  font-size: 13px;
   color: #8a6636;
   letter-spacing: 1px;
 }
 
 .fortune-result-card h2#fortune-result-title {
-  margin: 4px 0 2px;
-  font-size: 20px;
+  margin: 2px 0 1px;
+  font-size: 18px;
   letter-spacing: -0.3px;
   color: #2b2b2b;
 }
 
 .fortune-date {
-  font-size: 12px;
+  font-size: 11.5px;
   color: var(--ink-soft);
 }
 
 .fortune-section {
-  padding: 8px 10px;
+  padding: 6px 9px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.6);
-  margin-bottom: 8px;
+  margin-bottom: 5px;
 }
 
 .fortune-total {
@@ -306,25 +310,25 @@ html, body {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .fortune-cat-label {
   font-weight: 700;
-  font-size: 13.5px;
+  font-size: 12.5px;
   color: var(--ink);
 }
 
 .fortune-stars {
-  font-size: 14px;
+  font-size: 13px;
   letter-spacing: 1px;
   color: #c0392b;
 }
 
 .fortune-text {
   margin: 0;
-  font-size: 13.5px;
-  line-height: 1.55;
+  font-size: 12.5px;
+  line-height: 1.45;
   color: #333;
 }
 
@@ -339,24 +343,24 @@ html, body {
 
 .fortune-quote-box { background: #f7f0e0; }
 .fortune-hanja {
-  margin: 6px 0 2px;
+  margin: 4px 0 1px;
   font-family: "Noto Serif KR", serif;
-  font-size: 15px;
+  font-size: 14px;
   text-align: center;
   color: #2b2b2b;
   letter-spacing: 2px;
 }
 .fortune-korean {
   margin: 0;
-  font-size: 12.5px;
+  font-size: 11.5px;
   color: #7a5b33;
   text-align: center;
   font-style: italic;
 }
 
 .fortune-footer {
-  margin-top: 8px;
-  font-size: 10.5px;
+  margin-top: 4px;
+  font-size: 10px;
   color: #bba88a;
   text-align: center;
   letter-spacing: 0.3px;
@@ -366,7 +370,7 @@ html, body {
   display: flex;
   gap: 8px;
   align-items: center;
-  margin-top: 12px;
+  margin-top: 8px;
   flex-wrap: wrap;
 }
 
@@ -414,9 +418,15 @@ html, body {
 /* ---------- dino game modal ---------- */
 .game-card {
   max-width: min(98vw, 2800px);
+  max-height: 94vh;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 18px 14px;
+  overflow: hidden;
 }
+.game-card h2#game-title { margin-bottom: 6px; font-size: 16px; }
 .game-hint {
-  margin: 0 0 10px;
+  margin: 0 0 8px;
   font-size: 12px;
   color: var(--ink-soft);
 }
@@ -425,9 +435,10 @@ html, body {
   border-radius: 10px;
   overflow: hidden;
   background: #f6f1e4;
-  /* Fixed height (roughly previous 32:10 rendering at 1920w) so further
-     max-width changes only extend horizontally, never shorten the track. */
-  height: min(60vh, 580px);
+  /* Fill the remaining vertical space so the track is as tall as possible
+     without ever pushing the modal beyond the viewport. */
+  flex: 1 1 auto;
+  min-height: 220px;
   width: 100%;
 }
 #dino-canvas {
@@ -442,23 +453,25 @@ html, body {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 10px 0 6px;
+  margin: 8px 0 4px;
   font-size: 13px;
   color: var(--ink-soft);
   flex-wrap: wrap;
+  flex: 0 0 auto;
 }
 .game-meta b { color: var(--ink); font-size: 15px; }
 .game-meta .admin-btn { margin-left: auto; padding: 6px 12px; font-size: 13px; }
 .game-ranking {
   list-style: none;
-  margin: 6px 0 8px;
-  padding: 8px 10px;
+  margin: 4px 0 6px;
+  padding: 6px 10px;
   background: #faf7ef;
   border: 1px solid #e8dfc9;
   border-radius: 8px;
-  max-height: 180px;
+  max-height: 96px;
   overflow-y: auto;
   font-size: 13px;
+  flex: 0 0 auto;
 }
 .game-ranking li {
   display: flex;
@@ -492,10 +505,12 @@ html, body {
   padding: 6px 2px;
 }
 .game-tip {
-  margin: 8px 0 0;
-  font-size: 12px;
+  margin: 4px 0 0;
+  font-size: 11.5px;
   color: var(--ink-soft);
+  flex: 0 0 auto;
 }
+.game-card h3.picker-sub { margin: 6px 0 2px; font-size: 12.5px; }
 
 .tagline {
   margin: 4px 0 12px;
