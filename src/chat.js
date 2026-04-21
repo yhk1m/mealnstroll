@@ -122,10 +122,12 @@ export function createChatUI({ listEl, formEl, inputEl, onSubmit, getUsers, getM
   function renderPopup() {
     if (!mentionState) { closePopup(); return; }
     popup.innerHTML = '';
+    let selectedEl = null;
     mentionState.items.forEach((u, i) => {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'mention-item' + (i === mentionState.selectedIdx ? ' selected' : '');
+      const isSel = i === mentionState.selectedIdx;
+      btn.className = 'mention-item' + (isSel ? ' selected' : '');
       const emo = document.createElement('span');
       emo.className = 'mention-emoji';
       emo.textContent = u.emoji || '🙂';
@@ -135,9 +137,18 @@ export function createChatUI({ listEl, formEl, inputEl, onSubmit, getUsers, getM
       btn.append(emo, nm);
       // mousedown (not click) so we fire before the input's blur closes the popup
       btn.addEventListener('mousedown', (e) => { e.preventDefault(); selectMention(i); });
+      // Move highlight when hovering so keyboard + mouse stay in sync
+      btn.addEventListener('mousemove', () => {
+        if (mentionState && mentionState.selectedIdx !== i) {
+          mentionState.selectedIdx = i;
+          renderPopup();
+        }
+      });
       popup.appendChild(btn);
+      if (isSel) selectedEl = btn;
     });
     popup.hidden = false;
+    if (selectedEl) selectedEl.scrollIntoView({ block: 'nearest' });
   }
 
   function updateMention() {
@@ -187,23 +198,27 @@ export function createChatUI({ listEl, formEl, inputEl, onSubmit, getUsers, getM
     if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) updateMention();
   });
   inputEl.addEventListener('keydown', (e) => {
-    if (e.isComposing || e.keyCode === 229) return;
     if (popup.hidden || !mentionState) return;
     const len = mentionState.items.length;
+    // Arrows/Escape must work even during Korean IME composition so the user
+    // can navigate the popup while still in a composing state.
     if (e.key === 'ArrowDown') {
       e.preventDefault();
+      e.stopPropagation();
       mentionState.selectedIdx = (mentionState.selectedIdx + 1) % len;
       renderPopup();
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
+      e.stopPropagation();
       mentionState.selectedIdx = (mentionState.selectedIdx - 1 + len) % len;
       renderPopup();
-    } else if (e.key === 'Enter' || e.key === 'Tab') {
-      e.preventDefault();
-      selectMention(mentionState.selectedIdx);
     } else if (e.key === 'Escape') {
       e.preventDefault();
       closePopup();
+    } else if ((e.key === 'Enter' || e.key === 'Tab') && !e.isComposing && e.keyCode !== 229) {
+      // Skip Enter during IME so Korean composition can finalize first.
+      e.preventDefault();
+      selectMention(mentionState.selectedIdx);
     }
   });
   inputEl.addEventListener('blur', () => {
