@@ -14,9 +14,13 @@ const GRAVITY = 0.9;
 const JUMP_V = -14.5;
 const DUCK_GRAVITY = 2.4;
 // Speed is constant — difficulty comes from obstacles, not tempo.
-const BASE_SPEED = 5;
+// Values are defined per 60-FPS frame (FIXED_DT below) so the simulation
+// runs at the same speed on any monitor refresh rate.
+const BASE_SPEED = 7;
 const SPEED_GROWTH = 0; // no acceleration over time
-const MAX_SPEED = 5;
+const MAX_SPEED = 7;
+// Fixed-timestep simulation at 60 Hz — keeps speed identical on 60/120/144Hz.
+const FIXED_DT = 1 / 60;
 const SCORE_PER_FRAME = 0.12;
 const FLY_UNLOCK_SCORE = 100;
 // Difficulty steps up every 50 points (tier = floor(score/50)).
@@ -64,6 +68,9 @@ export function createGame(canvas, { onGameOver, onTick } = {}) {
   ro.observe(canvas);
   resize();
 
+  let lastTime = 0;
+  let accumulator = 0;
+
   function reset() {
     state = STATE.READY;
     speed = BASE_SPEED;
@@ -76,6 +83,8 @@ export function createGame(canvas, { onGameOver, onTick } = {}) {
     dino.onGround = true;
     dino.ducking = false;
     dino.y = groundY - dino.h;
+    lastTime = 0;
+    accumulator = 0;
     draw();
   }
 
@@ -209,9 +218,22 @@ export function createGame(canvas, { onGameOver, onTick } = {}) {
     onGameOver?.(Math.floor(score));
   }
 
-  function loop() {
+  function loop(timestamp) {
     if (state !== STATE.RUNNING) return;
-    step();
+    if (!lastTime) lastTime = timestamp || performance.now();
+    const now = timestamp || performance.now();
+    // Cap dt to avoid huge jumps when a tab regains focus.
+    const dt = Math.min(0.1, (now - lastTime) / 1000);
+    lastTime = now;
+    accumulator += dt;
+    // Run as many fixed 60-FPS ticks as the elapsed time allows. A 60Hz
+    // monitor does 1 step/frame; a 120Hz monitor still runs 60 steps/sec.
+    let safety = 5; // don't spiral on long stalls
+    while (accumulator >= FIXED_DT && safety-- > 0) {
+      step();
+      if (state !== STATE.RUNNING) break;
+      accumulator -= FIXED_DT;
+    }
     draw();
     rafId = requestAnimationFrame(loop);
   }

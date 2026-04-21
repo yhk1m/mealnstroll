@@ -3,7 +3,7 @@ import { supabase, hasSupabase } from './supabase.js';
 
 const CHANNEL = 'mealnstroll-lobby';
 
-export function createRealtime({ selfId, initialState, onSync, onChat, onSystem, onLeave, onNotice, onNoticeRequest }) {
+export function createRealtime({ selfId, initialState, onSync, onChat, onSystem, onLeave, onNotice, onNoticeRequest, onProfileUpdate }) {
   if (!hasSupabase) {
     onSystem?.('Supabase 설정이 없어 나 혼자 산책 중입니다. .env 설정 후 재시작하세요.');
     return {
@@ -54,6 +54,9 @@ export function createRealtime({ selfId, initialState, onSync, onChat, onSystem,
     })
     .on('broadcast', { event: 'notice-request' }, ({ payload }) => {
       if (payload && payload.id !== selfId) onNoticeRequest?.(payload);
+    })
+    .on('broadcast', { event: 'profile-update' }, ({ payload }) => {
+      if (payload && payload.id !== selfId) onProfileUpdate?.(payload);
     });
 
   channel.subscribe(async (status) => {
@@ -66,6 +69,13 @@ export function createRealtime({ selfId, initialState, onSync, onChat, onSystem,
     async updateSelf(patch) {
       currentSelf = { ...currentSelf, ...patch };
       await channel.track(currentSelf);
+      // Extra broadcast so peers reflect the change instantly without
+      // waiting for a presence sync round-trip.
+      channel.send({
+        type: 'broadcast',
+        event: 'profile-update',
+        payload: { id: selfId, patch }
+      });
     },
     sendChat(text) {
       const payload = { id: selfId, name: currentSelf.name, text, at: Date.now() };

@@ -136,7 +136,11 @@ const rt = createRealtime({
   },
   // No exit animation: a user who closes the tab disappears immediately
   // (presence 'leave' + next onSync removes them from `others`).
-  onLeave: () => {}
+  onLeave: () => {},
+  onProfileUpdate: ({ id, patch }) => {
+    const target = others.get(id);
+    if (target && patch) Object.assign(target, patch);
+  }
 });
 
 // ---------- UI handlers ----------
@@ -791,7 +795,14 @@ if (isAdmin) {
   });
 }
 
-window.addEventListener('beforeunload', () => rt.leave());
+window.addEventListener('beforeunload', (e) => {
+  rt.leave();
+  // Most browsers ignore the custom message and show a generic prompt,
+  // but setting returnValue is required to trigger the dialog.
+  e.preventDefault();
+  e.returnValue = '새로고침하면 캐릭터와 진행 상태가 초기화돼요.';
+  return e.returnValue;
+});
 
 // ---------- render loop ----------
 function loop() {
