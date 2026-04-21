@@ -334,7 +334,10 @@
           <span class="game-best">내 최고 <b id="sleepers-best">0</b>점</span>
           <button id="sleepers-restart" type="button" class="admin-btn">다시 시작</button>
         </div>
-        <h3 class="picker-sub">🏆 지금 접속자 랭킹</h3>
+        <div class="game-ranking-head">
+          <h3 class="picker-sub">🏆 지금 접속자 랭킹</h3>
+          <button id="sleepers-taunt-btn" type="button" class="taunt-btn" title="내 주변 랭킹 5명을 이미지로 공유해 도발하기">⚔️ 도발하기</button>
+        </div>
         <ol id="sleepers-ranking" class="game-ranking"></ol>
         <p class="game-tip">신기록을 깨면 채팅에 자동으로 공지돼요. 시간은 20초부터, 10점마다 +10초!</p>
       </div>
@@ -342,7 +345,7 @@
 
     <!-- Offscreen capture target for the "도발하기" image -->
     <div id="taunt-capture" class="taunt-capture" aria-hidden="true">
-      <div class="taunt-title">⚔️ 복도달리기 도발장</div>
+      <div class="taunt-title" id="taunt-title">⚔️ 복도달리기 도발장</div>
       <div class="taunt-subtitle" id="taunt-subtitle"></div>
       <ol class="taunt-list" id="taunt-list"></ol>
       <p class="taunt-message" id="taunt-message"></p>

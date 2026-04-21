@@ -439,22 +439,26 @@ sleepersModal.addEventListener('click', (e) => {
 });
 sleepersRestartBtn.addEventListener('click', () => sleepersGame?.start());
 
-// ---------- 복도달리기 도발하기 ----------
+// ---------- 도발하기 (복도달리기 / 학생깨우기 공용) ----------
 const tauntBtn = document.getElementById('taunt-btn');
+const sleepersTauntBtn = document.getElementById('sleepers-taunt-btn');
 const tauntCapture = document.getElementById('taunt-capture');
+const tauntTitleEl = document.getElementById('taunt-title');
 const tauntListEl = document.getElementById('taunt-list');
 const tauntSubtitle = document.getElementById('taunt-subtitle');
 const tauntMsgEl = document.getElementById('taunt-message');
 
-function getAllRankingRows() {
+function getRankingRows(scoreField) {
   const rows = [];
   for (const av of others.values()) {
-    if ((av.bestScore || 0) > 0) {
-      rows.push({ id: av.id, name: av.name || '익명', emoji: av.emoji || '🙂', score: av.bestScore, me: false });
+    const s = av[scoreField] || 0;
+    if (s > 0) {
+      rows.push({ id: av.id, name: av.name || '익명', emoji: av.emoji || '🙂', score: s, me: false });
     }
   }
-  if ((me.bestScore || 0) > 0) {
-    rows.push({ id: me.id, name: me.name || '나', emoji: me.emoji || '🙂', score: me.bestScore, me: true });
+  const myScore = me[scoreField] || 0;
+  if (myScore > 0) {
+    rows.push({ id: me.id, name: me.name || '나', emoji: me.emoji || '🙂', score: myScore, me: true });
   }
   rows.sort((a, b) => b.score - a.score);
   return rows;
@@ -496,12 +500,13 @@ function pickTauntMessage(myRank, total) {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
-async function buildTauntCanvas() {
-  if ((me.bestScore || 0) <= 0) {
+async function buildTauntCanvas(opts) {
+  const { scoreField, titleText } = opts;
+  if ((me[scoreField] || 0) <= 0) {
     showToast('먼저 한 판 뛰어서 점수를 올려주세요!');
     return null;
   }
-  const rows = getAllRankingRows();
+  const rows = getRankingRows(scoreField);
   const myIdx = rows.findIndex((r) => r.me);
   if (myIdx < 0) {
     showToast('랭킹에서 내 점수를 찾지 못했어요.');
@@ -512,6 +517,7 @@ async function buildTauntCanvas() {
   const slice = rows.slice(start, end);
   const myRank = myIdx + 1;
 
+  tauntTitleEl.textContent = titleText;
   tauntListEl.innerHTML = '';
   slice.forEach((row, i) => {
     const actualRank = start + i + 1;
@@ -532,28 +538,26 @@ async function buildTauntCanvas() {
   tauntSubtitle.textContent = `전체 ${rows.length}명 중 ${myRank}위 · ${formatKoreanDate(new Date())}`;
   tauntMsgEl.textContent = pickTauntMessage(myRank, rows.length);
 
-  // Give the browser a tick to lay out the offscreen card before capturing.
   await new Promise((r) => setTimeout(r, 30));
   if (typeof window.html2canvas !== 'function') throw new Error('html2canvas not loaded');
   return await window.html2canvas(tauntCapture, { backgroundColor: null, scale: 2, useCORS: true });
 }
 
-tauntBtn.addEventListener('click', async () => {
+async function handleTauntClick(opts) {
   try {
-    const canvas = await buildTauntCanvas();
+    const canvas = await buildTauntCanvas(opts);
     if (!canvas) return;
     const isMobile = /Mobi|Android/i.test(navigator.userAgent);
     const blob = await new Promise((r) => canvas.toBlob(r, 'image/png'));
-    const file = new File([blob], 'taunt.png', { type: 'image/png' });
+    const file = new File([blob], `${opts.fileSlug}.png`, { type: 'image/png' });
     if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
-        await navigator.share({ title: '복도달리기 도발장', text: '내 랭킹 한번 봐!', files: [file] });
+        await navigator.share({ title: opts.titleText, text: '내 랭킹 한번 봐!', files: [file] });
         return;
       } catch { /* user cancelled → fall through */ }
     }
-    // Desktop fallback: download + clipboard copy
     const link = document.createElement('a');
-    link.download = `복도달리기_도발장_${new Date().toISOString().slice(0, 10)}.png`;
+    link.download = `${opts.fileSlug}_${new Date().toISOString().slice(0, 10)}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
     try {
@@ -568,7 +572,19 @@ tauntBtn.addEventListener('click', async () => {
     console.error(err);
     showToast('도발장 생성에 실패했어요');
   }
-});
+}
+
+tauntBtn.addEventListener('click', () => handleTauntClick({
+  scoreField: 'bestScore',
+  titleText: '⚔️ 복도달리기 도발장',
+  fileSlug: '복도달리기_도발장'
+}));
+
+sleepersTauntBtn?.addEventListener('click', () => handleTauntClick({
+  scoreField: 'bestScoreSleepers',
+  titleText: '😴 학생깨우기 도발장',
+  fileSlug: '학생깨우기_도발장'
+}));
 
 // ---------- fortune (오늘의 교사 운세) ----------
 const fortuneBtn = document.getElementById('fortune-btn');
