@@ -314,9 +314,10 @@ const fortuneToast = document.getElementById('fortune-toast');
   const daySel = document.getElementById('ff-day');
   const hourSel = document.getElementById('ff-hour');
 
-  const thisYear = new Date().getFullYear();
+  // 최근 20년은 제외 — 교사가 될 수 있는 최소 연령 고려
+  const maxYear = new Date().getFullYear() - 20;
   yearSel.innerHTML = '<option value="">연도</option>' +
-    Array.from({ length: thisYear - 1940 + 1 }, (_, i) => thisYear - i)
+    Array.from({ length: maxYear - 1940 + 1 }, (_, i) => maxYear - i)
       .map(y => `<option value="${y}">${y}년</option>`).join('');
   monthSel.innerHTML = '<option value="">월</option>' +
     Array.from({ length: 12 }, (_, i) => i + 1).map(m => `<option value="${m}">${m}월</option>`).join('');

@@ -150,9 +150,9 @@ export function renderStars(count) {
 export function validateProfile(p) {
   const errors = {};
   const now = new Date();
-  const thisYear = now.getFullYear();
+  const maxYear = now.getFullYear() - 20;
 
-  if (!p.birthYear || p.birthYear < 1940 || p.birthYear > thisYear) {
+  if (!p.birthYear || p.birthYear < 1940 || p.birthYear > maxYear) {
     errors.birthYear = '연도를 확인해주세요';
   }
   if (!p.birthMonth || p.birthMonth < 1 || p.birthMonth > 12) {

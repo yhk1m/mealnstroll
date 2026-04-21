@@ -413,7 +413,7 @@ html, body {
 
 /* ---------- dino game modal ---------- */
 .game-card {
-  max-width: 840px;
+  max-width: 1120px;
 }
 .game-hint {
   margin: 0 0 10px;

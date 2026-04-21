@@ -13,12 +13,14 @@ const GROUND_Y_RATIO = 0.78;
 const GRAVITY = 0.9;
 const JUMP_V = -14.5;
 const DUCK_GRAVITY = 2.4;
-// Speed rolled back to the original feel; obstacle density raised instead.
+// Speed is constant — difficulty comes from obstacles, not tempo.
 const BASE_SPEED = 6;
-const SPEED_GROWTH = 0.0018; // px/frame per frame
-const MAX_SPEED = 13;
+const SPEED_GROWTH = 0; // no acceleration over time
+const MAX_SPEED = 6;
 const SCORE_PER_FRAME = 0.12;
 const FLY_UNLOCK_SCORE = 100;
+// Obstacle difficulty ramps from 0 → 1 over DIFFICULTY_RAMP_SCORE points.
+const DIFFICULTY_RAMP_SCORE = 400;
 
 const STATE = { READY: 'ready', RUNNING: 'running', OVER: 'over' };
 
@@ -104,15 +106,18 @@ export function createGame(canvas, { onGameOver, onTick } = {}) {
   }
 
   function spawnObstacle() {
-    // Denser spawning: shorter min gap, tighter random spread.
-    const minGap = Math.max(150, 300 - speed * 16);
-    const maxGap = minGap + 130;
+    // d ∈ [0, 1]: difficulty ramp based on accumulated score (time played).
+    const d = Math.min(1, score / DIFFICULTY_RAMP_SCORE);
+    // Gap shrinks as difficulty rises: 280→120 min, 430→180 max.
+    const minGap = Math.max(120, 280 - d * 160);
+    const maxGap = minGap + Math.max(60, 150 - d * 90);
     if (obstacles.length && obstacles[obstacles.length - 1].x > W - minGap) return;
     if (obstacles.length && obstacles[obstacles.length - 1].x > W - (minGap + Math.random() * (maxGap - minGap))) return;
 
     const canFly = score >= FLY_UNLOCK_SCORE;
+    const flyProb = 0.22 + d * 0.23; // 22%→45% airborne as difficulty rises
     const roll = Math.random();
-    if (canFly && roll < 0.32) {
+    if (canFly && roll < flyProb) {
       // Paper airplane at random height (duckable low / jumpable high)
       const lowY = groundY - 18;
       const highY = groundY - 54;
@@ -120,11 +125,15 @@ export function createGame(canvas, { onGameOver, onTick } = {}) {
       const glyph = FLY_GLYPHS[Math.floor(Math.random() * FLY_GLYPHS.length)];
       obstacles.push({ type: 'fly', x: W + 10, y: by, w: 28, h: 20, wingTick: 0, glyph });
     } else {
-      // Ground obstacle cluster: 1~4 items, biased toward bigger clusters.
-      const count = roll < 0.3 ? 1 : roll < 0.65 ? 2 : roll < 0.9 ? 3 : 4;
+      // Cluster size biases toward larger with difficulty.
+      const r = Math.random();
+      let count;
+      if (d < 0.35) count = r < 0.55 ? 1 : r < 0.85 ? 2 : 3;
+      else if (d < 0.7) count = r < 0.3 ? 1 : r < 0.65 ? 2 : r < 0.9 ? 3 : 4;
+      else count = r < 0.15 ? 1 : r < 0.45 ? 2 : r < 0.8 ? 3 : 4;
       const baseW = 18;
       const gap = 4;
-      const tall = Math.random() < 0.32;
+      const tall = Math.random() < (0.28 + d * 0.12); // 28%→40% tall
       const w = baseW * count + gap * (count - 1);
       const h = tall ? 42 : 30;
       const pool = tall ? TALL_GLYPHS : SHORT_GLYPHS;
