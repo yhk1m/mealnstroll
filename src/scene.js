@@ -283,39 +283,159 @@ export function createScene(canvas, theme) {
   }
 
   function drawDecor(t, now) {
-    if (t.decor === 'snow') {
-      ctx.fillStyle = 'rgba(255,255,255,0.9)';
-      for (let i = 0; i < 40; i++) {
-        const x = ((i * 97 + (now * 0.03) % width + decorSeed * 300) % width);
-        const y = ((i * 53 + (now * 0.05)) % height);
+    const decor = t.decor;
+    if (!decor) return;
+
+    if (decor === 'snow') {
+      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      for (let i = 0; i < 50; i++) {
+        const x = ((i * 97 + now * 0.03 + decorSeed * 300) % width);
+        const y = ((i * 53 + now * 0.05) % height);
         ctx.beginPath();
         ctx.arc(x, y, 2, 0, Math.PI * 2);
         ctx.fill();
       }
-    } else if (t.decor === 'petals') {
-      ctx.fillStyle = 'rgba(255,182,193,0.8)';
-      for (let i = 0; i < 24; i++) {
-        const x = ((i * 113 + (now * 0.04)) % width);
-        const y = ((i * 67 + (now * 0.06)) % height);
+    } else if (decor === 'leaves') {
+      for (let i = 0; i < 22; i++) {
+        const x = ((i * 131 + now * 0.05) % (width + 40)) - 20;
+        const y = ((i * 71 + now * 0.06) % height);
+        const rot = now / 1200 + i;
+        ctx.fillStyle = i % 3 === 0 ? 'rgba(220,140,60,0.85)' : (i % 3 === 1 ? 'rgba(190,85,45,0.85)' : 'rgba(230,180,70,0.85)');
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(rot);
         ctx.beginPath();
-        ctx.ellipse(x, y, 3, 5, i, 0, Math.PI * 2);
+        ctx.ellipse(0, 0, 4, 7, 0, 0, Math.PI * 2);
         ctx.fill();
+        ctx.restore();
       }
-    } else if (t.decor === 'leaves') {
-      ctx.fillStyle = 'rgba(200,90,40,0.7)';
-      for (let i = 0; i < 18; i++) {
-        const x = ((i * 131 + (now * 0.035)) % width);
-        const y = ((i * 71 + (now * 0.055)) % height);
-        ctx.beginPath();
-        ctx.ellipse(x, y, 4, 6, i, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    } else if (t.decor === 'sun') {
-      ctx.fillStyle = 'rgba(255,220,80,0.6)';
+    } else if (decor === 'sun') {
+      const sx = width - 90;
+      const sy = 70;
+      ctx.save();
+      ctx.fillStyle = 'rgba(255,220,80,0.75)';
       ctx.beginPath();
-      ctx.arc(width - 80, 80, 36, 0, Math.PI * 2);
+      ctx.arc(sx, sy, 30, 0, Math.PI * 2);
       ctx.fill();
+      ctx.strokeStyle = 'rgba(255,220,80,0.55)';
+      ctx.lineWidth = 3;
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2 + now / 3000;
+        const r1 = 38, r2 = 50;
+        ctx.beginPath();
+        ctx.moveTo(sx + Math.cos(a) * r1, sy + Math.sin(a) * r1);
+        ctx.lineTo(sx + Math.cos(a) * r2, sy + Math.sin(a) * r2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    } else if (decor === 'clouds') {
+      ctx.fillStyle = 'rgba(255,255,255,0.78)';
+      for (let i = 0; i < 5; i++) {
+        const speed = 12 + (i % 3) * 6;
+        const x = ((i * 260 + now / speed) % (width + 260)) - 130;
+        const y = 50 + (i % 3) * 35;
+        drawFluffyCloud(x, y, 42);
+      }
+    } else if (decor === 'fog') {
+      ctx.save();
+      for (let i = 0; i < 5; i++) {
+        const drift = Math.sin(now / 1800 + i) * 12;
+        const y = (i * height / 5) + drift;
+        const grad = ctx.createLinearGradient(0, y, 0, y + height / 5);
+        grad.addColorStop(0, 'rgba(230,230,230,0.0)');
+        grad.addColorStop(0.5, 'rgba(230,230,230,0.35)');
+        grad.addColorStop(1, 'rgba(230,230,230,0.0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, y, width, height / 5);
+      }
+      ctx.restore();
+    } else if (decor === 'rain') {
+      ctx.strokeStyle = 'rgba(100,150,220,0.7)';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 90; i++) {
+        const x = ((i * 97 + now * 0.35) % (width + 40)) - 20;
+        const y = ((i * 53 + now * 0.9) % height);
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - 5, y + 14);
+        ctx.stroke();
+      }
+    } else if (decor === 'typhoon') {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(100,140,200,0.72)';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 160; i++) {
+        const x = ((i * 91 + now * 0.7) % (width + 60)) - 30;
+        const y = ((i * 47 + now * 1.6) % height);
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - 18, y + 22);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+      ctx.lineWidth = 3;
+      for (let i = 0; i < 8; i++) {
+        const y = (i * height / 8 + (now / 8) % (height / 8));
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.bezierCurveTo(width / 3, y - 18, width * 2 / 3, y + 14, width, y);
+        ctx.stroke();
+      }
+      ctx.restore();
+    } else if (decor === 'thunder') {
+      // base rain
+      ctx.strokeStyle = 'rgba(120,150,200,0.7)';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 110; i++) {
+        const x = ((i * 97 + now * 0.5) % (width + 40)) - 20;
+        const y = ((i * 53 + now * 1.2) % height);
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - 6, y + 18);
+        ctx.stroke();
+      }
+      // flash every ~4s for ~120ms
+      const cycleMs = 4200;
+      const phase = now % cycleMs;
+      if (phase < 120) {
+        const flashSeed = Math.floor(now / cycleMs);
+        const bx = ((flashSeed * 9301 + 49297) % 233280) / 233280 * width;
+        ctx.save();
+        ctx.fillStyle = `rgba(255,255,255,${0.5 * (1 - phase / 120)})`;
+        ctx.fillRect(0, 0, width, height);
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(bx, 0);
+        ctx.lineTo(bx - 18, height * 0.35);
+        ctx.lineTo(bx + 8, height * 0.55);
+        ctx.lineTo(bx - 10, height * 0.8);
+        ctx.stroke();
+        ctx.restore();
+      }
+    } else if (decor === 'dust') {
+      ctx.save();
+      ctx.fillStyle = 'rgba(180,150,80,0.18)';
+      ctx.fillRect(0, 0, width, height);
+      ctx.fillStyle = 'rgba(160,130,70,0.6)';
+      for (let i = 0; i < 80; i++) {
+        const x = ((i * 113 + now * 0.2) % width);
+        const y = ((i * 67 + now * 0.04) % height);
+        ctx.beginPath();
+        ctx.arc(x, y, 1.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
     }
+  }
+
+  function drawFluffyCloud(x, y, r) {
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.arc(x + r * 0.8, y - r * 0.3, r * 0.9, 0, Math.PI * 2);
+    ctx.arc(x + r * 1.6, y, r * 0.85, 0, Math.PI * 2);
+    ctx.arc(x + r * 0.7, y + r * 0.3, r * 0.8, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   // Map a continuous angle (rad) to a point on the rhombus perimeter.

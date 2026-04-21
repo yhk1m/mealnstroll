@@ -1,12 +1,13 @@
 // © 2026 김용현
 const THEMES = {
+  // Seasons only set palette — `decor` is overridden by real weather at runtime.
   spring: {
     sky: '#d9efff',
     ground: '#b8e3a8',
     track: '#e8c38a',
     schoolWall: '#fff5d6',
     schoolRoof: '#d76b5d',
-    decor: 'petals',
+    decor: null,
     label: '봄'
   },
   summer: {
@@ -15,7 +16,7 @@ const THEMES = {
     track: '#d8a860',
     schoolWall: '#fff5d6',
     schoolRoof: '#c24c3e',
-    decor: 'sun',
+    decor: null,
     label: '여름'
   },
   autumn: {
@@ -24,7 +25,7 @@ const THEMES = {
     track: '#c4925a',
     schoolWall: '#fde9c2',
     schoolRoof: '#a34836',
-    decor: 'leaves',
+    decor: null,
     label: '가을'
   },
   winter: {
@@ -33,7 +34,7 @@ const THEMES = {
     track: '#cfd7de',
     schoolWall: '#fff',
     schoolRoof: '#6b7a89',
-    decor: 'snow',
+    decor: null,
     label: '겨울'
   }
 };

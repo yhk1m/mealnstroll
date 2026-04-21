@@ -13,6 +13,7 @@ import {
   formatKoreanDate,
   renderStars
 } from './fortune.js';
+import { getLocation, fetchWeather, decorFromWeather } from './weather.js';
 
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'admin';
 const ADMIN_AUTH_KEY = 'mealnstroll.admin.authed';
@@ -85,6 +86,20 @@ const chat = createChatUI({
 });
 
 chat.append({ system: true, text: `${theme.label}의 산책을 시작합니다 🍃` });
+
+// --- live weather → decor ---
+(async function applyWeatherDecor() {
+  try {
+    const loc = await getLocation();
+    const w = await fetchWeather(loc.lat, loc.lon);
+    const { decor, label } = decorFromWeather(w);
+    theme.decor = decor;
+    const placeHint = loc.fallback ? ' (서울 기준)' : '';
+    chat.append({ system: true, text: `🌤 오늘 날씨: ${label}${placeHint}` });
+  } catch {
+    theme.decor = 'sun';
+  }
+})();
 
 // ---------- realtime ----------
 const rt = createRealtime({
