@@ -486,7 +486,7 @@ export function createScene(canvas, theme) {
     drawFrontEffects(p, headY, level, now);
 
     // name label (bold + white outline for legibility)
-    ctx.font = 'bold 14px "DungGeunMo", system-ui, sans-serif';
+    ctx.font = 'bold 14px "Jua", system-ui, sans-serif';
     ctx.textBaseline = 'top';
     const label = (avatar.you ? '나 · ' : '') + (avatar.name || '');
     ctx.lineWidth = 4;
@@ -586,7 +586,7 @@ export function createScene(canvas, theme) {
   function drawBubble(x, y, text, alpha) {
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.font = '14px "DungGeunMo", system-ui, sans-serif';
+    ctx.font = '14px "Jua", system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     const maxWidth = 220;

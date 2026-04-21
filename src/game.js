@@ -287,6 +287,10 @@ export function createGame(canvas, { onGameOver, onTick } = {}) {
 
   function drawDino() {
     ctx.save();
+    // Force opaque fill: earlier draw calls leave the fillStyle at a faded
+    // rgba (clouds are 0.35 alpha), which would tint color emojis.
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#000';
     ctx.font = '32px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",serif';
     ctx.textBaseline = 'top';
     ctx.textAlign = 'left';
@@ -301,6 +305,8 @@ export function createGame(canvas, { onGameOver, onTick } = {}) {
 
   function drawObstacles() {
     ctx.save();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#000';
     ctx.textBaseline = 'top';
     ctx.textAlign = 'left';
     for (const o of obstacles) {
@@ -323,7 +329,7 @@ export function createGame(canvas, { onGameOver, onTick } = {}) {
 
   function drawHUD() {
     ctx.fillStyle = '#4a3d28';
-    ctx.font = 'bold 16px "DungGeunMo", system-ui, sans-serif';
+    ctx.font = 'bold 16px "Jua", system-ui, sans-serif';
     ctx.textBaseline = 'top';
     ctx.textAlign = 'right';
     ctx.fillText(`${Math.floor(score).toString().padStart(5, '0')}`, W - 12, 12);
@@ -334,7 +340,7 @@ export function createGame(canvas, { onGameOver, onTick } = {}) {
     ctx.fillStyle = 'rgba(0,0,0,0.45)';
     ctx.fillRect(0, H * 0.35, W, 42);
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 16px "DungGeunMo", system-ui, sans-serif';
+    ctx.font = 'bold 16px "Jua", system-ui, sans-serif';
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'center';
     ctx.fillText(text, W / 2, H * 0.35 + 21);

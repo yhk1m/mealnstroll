@@ -1,13 +1,8 @@
 /* © 2026 김용현 */
-@font-face {
-  font-family: 'DungGeunMo';
-  src: url('/fonts/DungGeunMo.woff2') format('woff2'),
-       url('/fonts/DungGeunMo.woff') format('woff'),
-       url('/fonts/DungGeunMo.eot') format('embedded-opentype');
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
+/* Fonts loaded from Google Fonts in index.html:
+   - Jua: main friendly rounded Korean face
+   - Gaegu: optional cute handwriting accent
+   - Noto Serif KR: hanja / quote */
 
 :root {
   --bg-sky: #cfe8ff;
@@ -31,7 +26,7 @@ html, body {
   padding: 0;
   height: 100%;
   overflow: hidden;
-  font-family: "DungGeunMo", "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-family: "Jua", "Pretendard", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   color: var(--ink);
   background: var(--bg-sky);
 }
@@ -275,7 +270,7 @@ html, body {
 }
 
 .fortune-iljin {
-  font-family: "Noto Serif KR", "DungGeunMo", serif;
+  font-family: "Noto Serif KR", "Jua", serif;
   font-size: 13px;
   color: #8a6636;
   letter-spacing: 1px;

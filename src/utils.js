@@ -101,10 +101,14 @@ export function directionForToday(date = new Date()) {
   return date.getDate() % 2 === 0 ? 1 : -1;
 }
 
+// Shared base angular speed so every avatar walks at the same pace.
+// Each tenure level then applies the same multiplier (levelMultiplier),
+// so two users who joined at the same time stay perfectly in sync.
+const BASE_WALK_SPEED = 0.1; // rad/sec
+
 export function randomMotion() {
-  const speed = 0.07 + Math.random() * 0.06; // rad/sec
   return {
-    speed: speed * directionForToday(),
+    speed: BASE_WALK_SPEED * directionForToday(),
     startedAt: Date.now()
   };
 }
