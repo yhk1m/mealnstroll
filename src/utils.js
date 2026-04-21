@@ -147,6 +147,19 @@ export function saveBestScore(score) {
   } catch {}
 }
 
+const SLEEPERS_BEST_KEY = 'mealnstroll.sleepers.best';
+
+export function loadBestScoreSleepers() {
+  const n = Number(localStorage.getItem(SLEEPERS_BEST_KEY) || 0);
+  return Number.isFinite(n) ? n : 0;
+}
+
+export function saveBestScoreSleepers(score) {
+  try {
+    localStorage.setItem(SLEEPERS_BEST_KEY, String(score));
+  } catch {}
+}
+
 export function formatTime(ts) {
   const d = new Date(ts);
   const hh = String(d.getHours()).padStart(2, '0');

@@ -410,6 +410,161 @@ html, body {
   .fortune-hanja { font-size: 14px; }
 }
 
+/* ---------- sleepers (학생 깨우기) ---------- */
+.sleepers-card {
+  max-width: min(96vw, 640px);
+  max-height: 96vh;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 18px 14px;
+  overflow: hidden;
+}
+.sleepers-card h2#sleepers-title { margin-bottom: 4px; font-size: 17px; }
+.sleepers-stage {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  background: #faf5e6;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+}
+.sleepers-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+}
+.sleepers-hud {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--ink);
+  padding: 0 2px;
+}
+.sleepers-hud .sl-hud-item b { font-size: 15px; color: var(--ink); }
+.sleepers-hud .sl-attendance {
+  margin-left: auto;
+  padding: 4px 10px;
+  border: 2px solid var(--ink);
+  background: #fff;
+  color: var(--ink);
+  border-radius: 8px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 13px;
+  box-shadow: 0 2px 0 var(--ink);
+  transition: transform 0.08s, box-shadow 0.08s, background 0.12s;
+}
+.sleepers-hud .sl-attendance:disabled {
+  opacity: 0.45;
+  cursor: default;
+  box-shadow: none;
+}
+.sleepers-hud .sl-attendance.active {
+  background: #ffe066;
+  box-shadow: 0 0 0 3px rgba(255,200,80,0.5);
+}
+.sleepers-hud .sl-attendance:not(:disabled):hover { filter: brightness(1.03); }
+
+.sleepers-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  aspect-ratio: 1 / 1;
+  max-height: 56vh;
+  align-self: center;
+  width: 100%;
+  max-width: 440px;
+}
+.student {
+  aspect-ratio: 1 / 1;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: #fff8d9;
+  font-size: clamp(28px, 4.2vw, 42px);
+  padding: 0;
+  cursor: pointer;
+  position: relative;
+  font-family: inherit;
+  transition: transform 0.08s, background 0.15s, box-shadow 0.12s;
+  line-height: 1;
+}
+.student .face {
+  display: inline-block;
+  pointer-events: none;
+}
+.student:hover { transform: scale(1.05); }
+.student.awake  { background: #fff8d9; }
+.student.dozing { background: #d9e9ff; }
+.student.asleep { background: #c1d0ee; }
+.student.block-hover { box-shadow: inset 0 0 0 4px #ff7ec8; }
+.sleepers-container.attendance-mode .student { cursor: crosshair; }
+
+.sl-bubble {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -120%);
+  background: #222;
+  color: #fff;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: slBubbleRise 0.7s ease-out forwards;
+  z-index: 2;
+}
+.sl-bubble.good { background: #2ca74b; }
+.sl-bubble.bad  { background: #d73a49; }
+@keyframes slBubbleRise {
+  from { opacity: 1; transform: translate(-50%, -120%); }
+  to   { opacity: 0; transform: translate(-50%, -220%); }
+}
+.sl-time-bonus {
+  position: absolute;
+  top: 0;
+  right: 8px;
+  background: #2b8a3e;
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  animation: slBonusRise 1.2s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes slBonusRise {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-30px); }
+}
+.sleepers-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  cursor: pointer;
+  text-align: center;
+  padding: 16px;
+  z-index: 5;
+}
+.sleepers-overlay[style*="display: none"] { display: none !important; }
+.sl-overlay-text {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
 /* ---------- dino game modal ---------- */
 .game-card {
   max-width: min(98vw, 2800px);

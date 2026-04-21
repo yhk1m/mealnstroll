@@ -23,6 +23,7 @@
           <div class="top-bar-right">
             <button id="fortune-btn" type="button" aria-label="오늘의 교사 운세" title="🔮 오늘의 교사 운세">🔮</button>
             <button id="game-btn" type="button" aria-label="복도 달리기" title="🏫 복도달리기">🎮</button>
+            <button id="sleepers-btn" type="button" aria-label="학생 깨우기" title="😴 학생 깨우기">😴</button>
             <button id="pause-btn" type="button" aria-label="산책 멈춤" title="산책 멈춤 (정신없을 때)">⏸</button>
             <button id="help-btn" type="button" aria-label="사용법" title="사용법">?</button>
           </div>
@@ -320,6 +321,24 @@
     </div>
 
     <div id="fortune-toast" class="fortune-toast" hidden></div>
+
+    <div id="sleepers-modal" class="help-modal" hidden>
+      <div class="help-backdrop" data-sleepers-close></div>
+      <div class="help-card sleepers-card" role="dialog" aria-modal="true" aria-labelledby="sleepers-title">
+        <button class="help-close" type="button" data-sleepers-close aria-label="닫기">×</button>
+        <h2 id="sleepers-title">😴 학생 깨우기</h2>
+        <p class="game-hint">수업 중 조는 학생을 클릭해 깨우세요! 5연속 성공하면 📋 출석부(2×2 범위)를 쓸 수 있어요. 깬 학생을 잘못 깨우면 -1점!</p>
+        <div id="sleepers-stage" class="sleepers-stage"></div>
+        <div class="game-meta">
+          <span class="game-score">현재 <b id="sleepers-current">0</b>점</span>
+          <span class="game-best">내 최고 <b id="sleepers-best">0</b>점</span>
+          <button id="sleepers-restart" type="button" class="admin-btn">다시 시작</button>
+        </div>
+        <h3 class="picker-sub">🏆 지금 접속자 랭킹</h3>
+        <ol id="sleepers-ranking" class="game-ranking"></ol>
+        <p class="game-tip">신기록을 깨면 채팅에 자동으로 공지돼요. 시간은 20초부터, 10점마다 +10초!</p>
+      </div>
+    </div>
 
     <!-- Offscreen capture target for the "도발하기" image -->
     <div id="taunt-capture" class="taunt-capture" aria-hidden="true">

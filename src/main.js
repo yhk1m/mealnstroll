@@ -3,8 +3,9 @@ import { createScene, GATE_ANGLE } from './scene.js';
 import { createChatUI } from './chat.js';
 import { createRealtime } from './realtime.js';
 import { currentTheme, applyThemeToCss } from './theme.js';
-import { loadProfile, saveProfile, randomProfile, randomMotion, uuid, EMOJI_CHOICES, HEAD_BG_CHOICES, DEFAULT_HEAD_BG, PALETTE, loadBestScore, saveBestScore } from './utils.js';
+import { loadProfile, saveProfile, randomProfile, randomMotion, uuid, EMOJI_CHOICES, HEAD_BG_CHOICES, DEFAULT_HEAD_BG, PALETTE, loadBestScore, saveBestScore, loadBestScoreSleepers, saveBestScoreSleepers } from './utils.js';
 import { createGame } from './game.js';
+import { createSleepersGame } from './sleepers.js';
 import {
   loadFortuneProfile,
   saveFortuneProfile,
@@ -57,7 +58,8 @@ saveProfile(profile);
 const motion = { ...randomMotion(), angle0: GATE_ANGLE, startedAt: Date.now() };
 
 let myBestScore = loadBestScore();
-const me = { id: selfId, you: true, ...profile, ...motion, bestScore: myBestScore };
+let myBestScoreSleepers = loadBestScoreSleepers();
+const me = { id: selfId, you: true, ...profile, ...motion, bestScore: myBestScore, bestScoreSleepers: myBestScoreSleepers };
 const others = new Map(); // id -> avatar state
 
 // ---------- DOM ----------
@@ -131,6 +133,7 @@ const rt = createRealtime({
     }
     onlineCount.textContent = nextIds.size;
     if (gameOpen) renderRanking();
+    if (sleepersOpen) renderSleepersRanking();
   },
   onChat: (msg) => {
     chat.append(msg);
@@ -142,9 +145,9 @@ const rt = createRealtime({
     }
   },
   onSystem: (text) => {
-    // Suppress join/leave notices while the game modal is open so the
-    // hallway-run session stays quiet.
-    if (gameOpen) return;
+    // Suppress join/leave notices while any focused minigame modal is open
+    // so the session stays quiet.
+    if (gameOpen || sleepersOpen) return;
     chat.append({ system: true, text });
   },
   onNotice: (payload) => {
@@ -347,6 +350,94 @@ document.addEventListener('keyup', (e) => {
   if (!gameOpen) return;
   if (e.key === 'ArrowDown' || e.key === 'Down') game?.setDucking(false);
 });
+
+// ---------- 학생 깨우기 (sleepers) ----------
+const sleepersBtn = document.getElementById('sleepers-btn');
+const sleepersModal = document.getElementById('sleepers-modal');
+const sleepersStage = document.getElementById('sleepers-stage');
+const sleepersCurrentEl = document.getElementById('sleepers-current');
+const sleepersBestEl = document.getElementById('sleepers-best');
+const sleepersRestartBtn = document.getElementById('sleepers-restart');
+const sleepersRankingEl = document.getElementById('sleepers-ranking');
+
+let sleepersGame = null;
+let sleepersOpen = false;
+
+function renderSleepersRanking() {
+  const rows = [];
+  for (const av of others.values()) {
+    if ((av.bestScoreSleepers || 0) > 0) {
+      rows.push({ id: av.id, name: av.name || '익명', emoji: av.emoji || '🙂', score: av.bestScoreSleepers, me: false });
+    }
+  }
+  if ((me.bestScoreSleepers || 0) > 0) {
+    rows.push({ id: me.id, name: me.name || '나', emoji: me.emoji || '🙂', score: me.bestScoreSleepers, me: true });
+  }
+  rows.sort((a, b) => b.score - a.score);
+  const top = rows.slice(0, 10);
+
+  sleepersRankingEl.innerHTML = '';
+  if (top.length === 0) {
+    const li = document.createElement('li');
+    li.className = 'empty';
+    li.textContent = '아직 기록이 없어요. 첫 점수의 주인공이 되어보세요!';
+    sleepersRankingEl.appendChild(li);
+    return;
+  }
+  top.forEach((row, i) => {
+    const li = document.createElement('li');
+    if (row.me) li.classList.add('me');
+    const rank = document.createElement('span');
+    rank.className = 'rank';
+    rank.textContent = `${i + 1}.`;
+    const who = document.createElement('span');
+    who.className = 'who';
+    who.textContent = `${row.emoji} ${row.name}${row.me ? ' (나)' : ''}`;
+    const score = document.createElement('span');
+    score.className = 'score';
+    score.textContent = `${row.score}점`;
+    li.append(rank, who, score);
+    sleepersRankingEl.appendChild(li);
+  });
+}
+
+function openSleepers() {
+  sleepersModal.hidden = false;
+  sleepersOpen = true;
+  sleepersBestEl.textContent = me.bestScoreSleepers || 0;
+  sleepersCurrentEl.textContent = 0;
+  renderSleepersRanking();
+  if (!sleepersGame) {
+    sleepersGame = createSleepersGame(sleepersStage, {
+      onTick: (s) => { sleepersCurrentEl.textContent = s; },
+      onGameOver: (finalScore) => {
+        sleepersCurrentEl.textContent = finalScore;
+        if (finalScore > (me.bestScoreSleepers || 0)) {
+          me.bestScoreSleepers = finalScore;
+          saveBestScoreSleepers(finalScore);
+          sleepersBestEl.textContent = finalScore;
+          rt.updateSelf({ bestScoreSleepers: finalScore });
+          rt.sendChat(`📋 학생깨우기 ${finalScore}점 신기록!`);
+          renderSleepersRanking();
+        }
+      }
+    });
+  } else {
+    sleepersGame.reset();
+  }
+}
+
+function closeSleepers() {
+  sleepersModal.hidden = true;
+  sleepersOpen = false;
+  sleepersGame?.stop();
+}
+
+sleepersBtn.addEventListener('click', openSleepers);
+sleepersModal.addEventListener('click', (e) => {
+  if (e.target.hasAttribute('data-sleepers-close')) closeSleepers();
+});
+sleepersRestartBtn.addEventListener('click', () => sleepersGame?.start());
 
 // ---------- 복도달리기 도발하기 ----------
 const tauntBtn = document.getElementById('taunt-btn');
@@ -825,6 +916,7 @@ document.addEventListener('keydown', (e) => {
     if (!helpModal.hidden) closeHelpModal();
     if (!emojiModal.hidden) emojiModal.hidden = true;
     if (!gameModal.hidden) closeGame();
+    if (!sleepersModal.hidden) closeSleepers();
     if (!fortuneFormModal.hidden) fortuneFormModal.hidden = true;
     if (!fortuneResultModal.hidden) fortuneResultModal.hidden = true;
   }
@@ -1010,7 +1102,8 @@ function serializeMe() {
     angle0: me.angle0,
     speed: me.speed,
     startedAt: me.startedAt,
-    bestScore: me.bestScore || 0
+    bestScore: me.bestScore || 0,
+    bestScoreSleepers: me.bestScoreSleepers || 0
   };
 }
 
