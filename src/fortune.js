@@ -102,7 +102,7 @@ function generateSeed(profile, date) {
 
 export function buildFortune(profile, date = new Date()) {
   const baseSeed = generateSeed(profile, date);
-  const starCats = ['class', 'student', 'office', 'work', 'money'];
+  const starCats = ['class', 'student', 'office', 'work', 'money', 'romance'];
 
   const out = {};
   const starsList = [];

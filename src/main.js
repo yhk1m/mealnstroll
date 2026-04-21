@@ -415,7 +415,7 @@ function showFortuneResult(profile) {
   document.getElementById('fortune-iljin').textContent = `${f.iljin.hanja} · ${f.iljin.korean}`;
   document.getElementById('fortune-date').textContent = formatKoreanDate(f.date);
 
-  const cats = ['total', 'class', 'student', 'office', 'work', 'money'];
+  const cats = ['total', 'class', 'student', 'office', 'work', 'money', 'romance'];
   for (const c of cats) {
     document.getElementById(`fr-${c}-stars`).textContent = starSpanText(f[c].stars);
     document.getElementById(`fr-${c}-text`).textContent = f[c].text;
