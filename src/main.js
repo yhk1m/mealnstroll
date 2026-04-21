@@ -84,7 +84,13 @@ const chat = createChatUI({
   onSubmit: (text) => {
     me.bubble = { text, at: Date.now() };
     rt.sendChat(text);
-  }
+  },
+  getUsers: () => {
+    const users = [{ name: me.name, emoji: me.emoji, self: true }];
+    for (const o of others.values()) users.push({ name: o.name, emoji: o.emoji });
+    return users;
+  },
+  getMyName: () => me.name
 });
 
 chat.append({ system: true, text: `${theme.label}의 산책을 시작합니다 🍃` });

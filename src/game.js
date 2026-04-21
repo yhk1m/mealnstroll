@@ -64,7 +64,12 @@ export function createGame(canvas, { onGameOver, onTick } = {}) {
     if (dino.onGround) dino.y = groundY - dino.h;
   }
 
-  const ro = new ResizeObserver(resize);
+  const ro = new ResizeObserver(() => {
+    resize();
+    // When the modal re-opens after being hidden, the canvas regains its
+    // dimensions asynchronously — redraw so READY/OVER screens aren't left blank.
+    if (W > 0 && H > 0 && state !== STATE.RUNNING) draw();
+  });
   ro.observe(canvas);
   resize();
 

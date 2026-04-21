@@ -130,7 +130,7 @@ html, body {
 }
 
 .sidebar-header h1 {
-  margin: 0;
+  margin: 0 0 12px;
   font-size: 20px;
   letter-spacing: -0.3px;
 }
@@ -894,12 +894,27 @@ html, body {
   border: 2px solid var(--ink);
   border-radius: 14px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
-  padding: 22px 22px 18px;
+  padding: 20px 22px 16px;
   max-width: 420px;
   width: 100%;
-  max-height: 85vh;
+  max-height: 94vh;
   overflow-y: auto;
   animation: helpPop 0.18s ease-out;
+}
+
+/* Tight vertical rhythm on short screens so the ? help fits without scrolling. */
+@media (max-height: 760px) {
+  .help-card { padding: 14px 18px 12px; }
+  .help-card h2 { margin: 0 0 8px; font-size: 17px; }
+  .help-list { font-size: 13px; line-height: 1.5; }
+  .help-list li { margin-bottom: 3px; }
+  .help-sub { margin: 10px 0 3px; font-size: 13px; }
+  .help-meta { margin: 0 0 5px; font-size: 12px; }
+  .level-list { font-size: 12.5px; line-height: 1.35; }
+  .level-list li { padding: 4px 10px; }
+  .help-tip { margin: 6px 0 0; padding: 6px 9px; font-size: 12px; }
+  .help-dismiss { margin: 8px 0 4px; }
+  .help-footnote { font-size: 11px; }
 }
 
 @keyframes helpPop {
@@ -915,20 +930,37 @@ html, body {
 
 .help-close {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 12px;
+  right: 12px;
   width: 30px;
   height: 30px;
-  border: none;
-  background: transparent;
-  font-size: 22px;
+  border-radius: 50%;
+  border: 2.5px solid var(--ink);
+  background: #fff;
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 800;
   line-height: 1;
   cursor: pointer;
-  color: var(--ink-soft);
-  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  box-shadow: 0 4px 0 var(--ink);
+  transition: transform 0.08s, box-shadow 0.08s, background 0.12s, color 0.12s;
+  user-select: none;
 }
 
-.help-close:hover { background: #f0f0f0; color: var(--ink); }
+.help-close:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--ink);
+}
+
+.help-close:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--ink);
+}
 
 .help-list {
   margin: 0 0 10px;
@@ -1449,6 +1481,84 @@ html, body {
   color: var(--ink-soft);
   font-size: 12px;
   padding: 4px;
+}
+
+#chat-log li.mentioned-me {
+  background: #fff4c4;
+  border-left: 3px solid var(--accent);
+  padding-left: 7px;
+  box-shadow: 0 0 0 1px rgba(255, 138, 76, 0.25);
+}
+
+.mention {
+  display: inline-block;
+  padding: 0 5px;
+  background: #e6f1ff;
+  color: #1a6fbb;
+  border-radius: 4px;
+  font-weight: 600;
+  margin: 0 1px;
+}
+
+.mention.mine {
+  background: #ffd56b;
+  color: #6a3a00;
+}
+
+/* ---------- @mention autocomplete popup ---------- */
+.mention-popup {
+  position: absolute;
+  left: 8px;
+  right: 64px;
+  bottom: calc(100% + 4px);
+  background: #fff;
+  border: 1.5px solid var(--ink);
+  border-radius: 10px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+  max-height: 180px;
+  overflow-y: auto;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  gap: 2px;
+}
+
+.mention-popup[hidden] { display: none; }
+
+.mention-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.08s;
+}
+
+.mention-item:hover,
+.mention-item.selected {
+  background: #fff1da;
+}
+
+.mention-item .mention-emoji {
+  font-size: 16px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.mention-item .mention-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
 }
 
 #chat-form {
