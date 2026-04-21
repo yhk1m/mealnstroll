@@ -205,49 +205,6 @@ export function createScene(canvas, theme) {
     ctx.drawImage(schoolImg, x, y, w, h);
   }
 
-  function drawGate() {
-    const pt = rhombusPoint(GATE_ANGLE);
-    const gx = cx + pt.x;
-    const gy = cy + pt.y;
-
-    const postW = 8;
-    const postH = 44;
-    const postGap = 48;
-    const baseY = gy + 6;
-
-    // shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.12)';
-    ctx.beginPath();
-    ctx.ellipse(gx, baseY + 3, postGap / 2 + 6, 3, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // posts
-    ctx.fillStyle = '#8b5a2b';
-    ctx.strokeStyle = '#333';
-    ctx.lineWidth = 1.5;
-    ctx.fillRect(gx - postGap / 2 - postW / 2, baseY - postH, postW, postH);
-    ctx.strokeRect(gx - postGap / 2 - postW / 2, baseY - postH, postW, postH);
-    ctx.fillRect(gx + postGap / 2 - postW / 2, baseY - postH, postW, postH);
-    ctx.strokeRect(gx + postGap / 2 - postW / 2, baseY - postH, postW, postH);
-
-    // top sign (arch)
-    const signW = postGap + postW + 12;
-    const signH = 20;
-    const signX = gx - signW / 2;
-    const signY = baseY - postH - signH + 2;
-
-    ctx.fillStyle = '#d76b5d';
-    roundRect(ctx, signX, signY, signW, signH, 4);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 12px "DungGeunMo", system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('학교', gx, signY + signH / 2 + 1);
-  }
-
   function drawSchool(t) {
     if (schoolImgReady) { drawSchoolImage(); return; }
     const w = Math.min(width, height) * 0.28;

@@ -9,22 +9,28 @@
   </head>
   <body>
     <div id="app">
-      <canvas id="scene"></canvas>
-
-      <div class="copyright">
-        ⓒ 2026. 양정고등학교 지리교사 김용현 |
-        <a href="https://bgnl.kr" target="_blank" rel="noopener noreferrer">https://bgnl.kr</a>
+      <div class="main-col">
+        <header class="top-bar">
+          <div class="top-bar-left">
+            <span class="copyright-inline">
+              ⓒ 2026. 양정고등학교 지리교사 김용현 |
+              <a href="https://bgnl.kr" target="_blank" rel="noopener noreferrer">https://bgnl.kr</a>
+            </span>
+          </div>
+          <div class="top-bar-right">
+            <button id="fortune-btn" type="button" aria-label="오늘의 교사 운세" title="🔮 오늘의 교사 운세">🔮</button>
+            <button id="game-btn" type="button" aria-label="복도 달리기" title="🏫 복도달리기">🎮</button>
+            <button id="pause-btn" type="button" aria-label="산책 멈춤" title="산책 멈춤 (정신없을 때)">⏸</button>
+            <button id="help-btn" type="button" aria-label="사용법" title="사용법">?</button>
+          </div>
+        </header>
+        <canvas id="scene"></canvas>
       </div>
 
       <aside id="sidebar">
         <header class="sidebar-header">
           <div class="title-row">
             <h1>🍱🚶🏻‍➡️급식먹고산책</h1>
-            <div class="title-buttons">
-              <button id="game-btn" type="button" aria-label="공룡 달리기" title="🦖 급식공룡달리기">🎮</button>
-              <button id="pause-btn" type="button" aria-label="산책 멈춤" title="산책 멈춤 (정신없을 때)">⏸</button>
-              <button id="help-btn" type="button" aria-label="사용법" title="사용법">?</button>
-            </div>
           </div>
           <p class="tagline">급식 후 산책하며 나누는 이야기</p>
           <div class="me-row">
@@ -145,12 +151,166 @@
       </div>
     </div>
 
+    <div id="fortune-form-modal" class="help-modal" hidden>
+      <div class="help-backdrop" data-fortune-form-close></div>
+      <div class="help-card fortune-form-card" role="dialog" aria-modal="true" aria-labelledby="fortune-form-title">
+        <button class="help-close" type="button" data-fortune-form-close aria-label="닫기">×</button>
+        <h2 id="fortune-form-title">🔮 오늘의 교사 운세</h2>
+        <p class="fortune-intro">몇 가지만 알려주시면 오늘의 운세를 뽑아드릴게요. 입력값은 이 브라우저에만 저장돼요.</p>
+
+        <form id="fortune-form" class="fortune-form">
+          <label class="fortune-label">생년월일
+            <div class="fortune-date-row">
+              <select id="ff-year" required></select>
+              <select id="ff-month" required></select>
+              <select id="ff-day" required></select>
+            </div>
+          </label>
+
+          <label class="fortune-label">태어난 시각
+            <select id="ff-hour" required>
+              <option value="">선택하세요</option>
+              <option value="unknown">모름</option>
+            </select>
+          </label>
+
+          <label class="fortune-label">성별
+            <div class="fortune-radio-row">
+              <label><input type="radio" name="ff-gender" value="M" /> 남</label>
+              <label><input type="radio" name="ff-gender" value="F" /> 여</label>
+            </div>
+          </label>
+
+          <label class="fortune-label">학교급
+            <div class="fortune-radio-row">
+              <label><input type="radio" name="ff-school" value="E" /> 초등</label>
+              <label><input type="radio" name="ff-school" value="M" /> 중등</label>
+              <label><input type="radio" name="ff-school" value="H" /> 고등</label>
+            </div>
+          </label>
+
+          <label class="fortune-label">담임 여부
+            <select id="ff-homeroom" required>
+              <option value="">먼저 학교급을 선택하세요</option>
+            </select>
+          </label>
+
+          <label class="fortune-label">담당 교과군
+            <select id="ff-subject" required>
+              <option value="">선택하세요</option>
+              <option value="korean">국어</option>
+              <option value="math">수학</option>
+              <option value="english">영어</option>
+              <option value="social">사회 (역사·도덕·일반사회·지리·통합사회)</option>
+              <option value="science">과학 (물·화·생·지·통합과학)</option>
+              <option value="pe">체육</option>
+              <option value="arts">예술 (음악·미술)</option>
+              <option value="tech">기술·가정·정보</option>
+              <option value="language">제2외국어·한문</option>
+              <option value="special">전문교과 (특성화·예체능고 등)</option>
+            </select>
+          </label>
+
+          <p id="fortune-form-error" class="fortune-form-error" hidden></p>
+          <div class="fortune-form-actions">
+            <button type="submit" class="admin-btn primary">오늘의 운세 보기</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="fortune-result-modal" class="help-modal" hidden>
+      <div class="help-backdrop" data-fortune-result-close></div>
+      <div class="help-card fortune-result-card" role="dialog" aria-modal="true" aria-labelledby="fortune-result-title">
+        <button class="help-close" type="button" data-fortune-result-close aria-label="닫기">×</button>
+        <div id="fortune-result" class="fortune-result">
+          <div class="fortune-header">
+            <div class="fortune-iljin" id="fortune-iljin"></div>
+            <h2 id="fortune-result-title">오늘의 교사 운세</h2>
+            <div class="fortune-date" id="fortune-date"></div>
+          </div>
+
+          <div class="fortune-section fortune-total">
+            <div class="fortune-cat">
+              <span class="fortune-cat-label">✨ 총운</span>
+              <span class="fortune-stars" id="fr-total-stars"></span>
+            </div>
+            <p class="fortune-text" id="fr-total-text"></p>
+          </div>
+
+          <div class="fortune-grid">
+            <div class="fortune-section">
+              <div class="fortune-cat">
+                <span class="fortune-cat-label">📚 수업운</span>
+                <span class="fortune-stars" id="fr-class-stars"></span>
+              </div>
+              <p class="fortune-text" id="fr-class-text"></p>
+            </div>
+            <div class="fortune-section">
+              <div class="fortune-cat">
+                <span class="fortune-cat-label">🎒 학생운</span>
+                <span class="fortune-stars" id="fr-student-stars"></span>
+              </div>
+              <p class="fortune-text" id="fr-student-text"></p>
+            </div>
+            <div class="fortune-section">
+              <div class="fortune-cat">
+                <span class="fortune-cat-label">☕ 교무실운</span>
+                <span class="fortune-stars" id="fr-office-stars"></span>
+              </div>
+              <p class="fortune-text" id="fr-office-text"></p>
+            </div>
+            <div class="fortune-section">
+              <div class="fortune-cat">
+                <span class="fortune-cat-label">📋 업무운</span>
+                <span class="fortune-stars" id="fr-work-stars"></span>
+              </div>
+              <p class="fortune-text" id="fr-work-text"></p>
+            </div>
+            <div class="fortune-section">
+              <div class="fortune-cat">
+                <span class="fortune-cat-label">💰 금전운</span>
+                <span class="fortune-stars" id="fr-money-stars"></span>
+              </div>
+              <p class="fortune-text" id="fr-money-text"></p>
+            </div>
+          </div>
+
+          <div class="fortune-section fortune-item-box">
+            <span class="fortune-cat-label">🍀 오늘의 행운템</span>
+            <p class="fortune-text" id="fr-item-text"></p>
+          </div>
+
+          <div class="fortune-section fortune-quote-box">
+            <span class="fortune-cat-label">📜 오늘의 한 줄</span>
+            <p class="fortune-hanja" id="fr-quote-hanja"></p>
+            <p class="fortune-korean" id="fr-quote-korean"></p>
+          </div>
+
+          <div class="fortune-section fortune-tip-box">
+            <span class="fortune-cat-label">💡 오늘의 꿀팁</span>
+            <p class="fortune-text" id="fr-tip-text"></p>
+          </div>
+
+          <div class="fortune-footer">ⓒ 2026. bgnl.kr — 🍱🚶🏻‍➡️급식먹고산책</div>
+        </div>
+
+        <div class="fortune-actions">
+          <button id="fortune-save-btn" type="button" class="admin-btn primary">📸 이미지 저장</button>
+          <button id="fortune-share-btn" type="button" class="admin-btn">🔗 공유하기</button>
+          <button id="fortune-edit-btn" type="button" class="fortune-edit-link">정보 수정</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="fortune-toast" class="fortune-toast" hidden></div>
+
     <div id="game-modal" class="help-modal" hidden>
       <div class="help-backdrop" data-game-close></div>
       <div class="help-card game-card" role="dialog" aria-modal="true" aria-labelledby="game-title">
         <button class="help-close" type="button" data-game-close aria-label="닫기">×</button>
-        <h2 id="game-title">🦖 급식공룡달리기</h2>
-        <p class="game-hint">Space · ↑ · 탭/클릭으로 점프 / ↓로 빠르게 내려오기</p>
+        <h2 id="game-title">🏫 복도달리기</h2>
+        <p class="game-hint">Space · ↑ · 탭/클릭으로 점프 / ↓로 빠르게 내려오기 — 책상·의자·공·종이비행기를 피하세요</p>
         <div class="game-stage">
           <canvas id="dino-canvas"></canvas>
         </div>
@@ -165,6 +325,7 @@
       </div>
     </div>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

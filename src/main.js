@@ -1,10 +1,18 @@
 // © 2026 김용현
-import { createScene, GATE_ANGLE, nextGateCrossingTime } from './scene.js';
+import { createScene, GATE_ANGLE } from './scene.js';
 import { createChatUI } from './chat.js';
 import { createRealtime } from './realtime.js';
 import { currentTheme, applyThemeToCss } from './theme.js';
 import { loadProfile, saveProfile, randomProfile, randomMotion, uuid, EMOJI_CHOICES, HEAD_BG_CHOICES, DEFAULT_HEAD_BG, PALETTE, loadBestScore, saveBestScore } from './utils.js';
 import { createGame } from './game.js';
+import {
+  loadFortuneProfile,
+  saveFortuneProfile,
+  buildFortune,
+  validateProfile,
+  formatKoreanDate,
+  renderStars
+} from './fortune.js';
 
 const FADE_MS = 1400;
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'admin';
@@ -111,7 +119,12 @@ const rt = createRealtime({
       if (target) target.bubble = { text: msg.text, at: msg.at || Date.now() };
     }
   },
-  onSystem: (text) => chat.append({ system: true, text }),
+  onSystem: (text) => {
+    // Suppress join/leave notices while the game modal is open so the
+    // hallway-run session stays quiet.
+    if (gameOpen) return;
+    chat.append({ system: true, text });
+  },
   onNotice: (payload) => {
     currentNotice = payload;
     renderNotice(payload);
@@ -125,13 +138,9 @@ const rt = createRealtime({
     // Only admin tabs rebroadcast the current notice for newly joined clients.
     if (isAdmin && currentNotice) rt.sendNotice(currentNotice.text);
   },
-  onLeave: (p) => {
-    const current = others.get(p.id) || p;
-    // Only animate exit if we have enough motion state to project the path.
-    if (typeof current.angle0 !== 'number' || typeof current.speed !== 'number' || !current.startedAt) return;
-    const exitAt = nextGateCrossingTime(current, Date.now());
-    leaving.set(p.id, { ...current, exitAt, you: false });
-  }
+  // No exit animation: a user who closes the tab disappears immediately
+  // (presence 'leave' + next onSync removes them from `others`).
+  onLeave: () => {}
 });
 
 // ---------- UI handlers ----------
@@ -244,7 +253,7 @@ function openGame() {
           saveBestScore(finalScore);
           gameBestEl.textContent = finalScore;
           rt.updateSelf({ bestScore: finalScore });
-          rt.sendChat(`🏆 급식공룡달리기 ${finalScore}점 신기록!`);
+          rt.sendChat(`🏆 복도달리기 ${finalScore}점 신기록!`);
           renderRanking();
         }
       }
@@ -288,6 +297,210 @@ document.addEventListener('keydown', (e) => {
 document.addEventListener('keyup', (e) => {
   if (!gameOpen) return;
   if (e.key === 'ArrowDown' || e.key === 'Down') game?.setDucking(false);
+});
+
+// ---------- fortune (오늘의 교사 운세) ----------
+const fortuneBtn = document.getElementById('fortune-btn');
+const fortuneFormModal = document.getElementById('fortune-form-modal');
+const fortuneResultModal = document.getElementById('fortune-result-modal');
+const fortuneForm = document.getElementById('fortune-form');
+const fortuneFormError = document.getElementById('fortune-form-error');
+const fortuneToast = document.getElementById('fortune-toast');
+
+// Populate year/month/day/hour selects
+(function initFortuneFormOptions() {
+  const yearSel = document.getElementById('ff-year');
+  const monthSel = document.getElementById('ff-month');
+  const daySel = document.getElementById('ff-day');
+  const hourSel = document.getElementById('ff-hour');
+
+  const thisYear = new Date().getFullYear();
+  yearSel.innerHTML = '<option value="">연도</option>' +
+    Array.from({ length: thisYear - 1940 + 1 }, (_, i) => thisYear - i)
+      .map(y => `<option value="${y}">${y}년</option>`).join('');
+  monthSel.innerHTML = '<option value="">월</option>' +
+    Array.from({ length: 12 }, (_, i) => i + 1).map(m => `<option value="${m}">${m}월</option>`).join('');
+  daySel.innerHTML = '<option value="">일</option>' +
+    Array.from({ length: 31 }, (_, i) => i + 1).map(d => `<option value="${d}">${d}일</option>`).join('');
+  for (let h = 0; h < 24; h++) {
+    for (const m of [0, 30]) {
+      const val = h + m / 60;
+      const opt = document.createElement('option');
+      opt.value = String(val);
+      opt.textContent = m === 0 ? `${h}시` : `${h}시 30분`;
+      hourSel.appendChild(opt);
+    }
+  }
+})();
+
+// School → homeroom dropdown linkage
+function updateHomeroomOptions(schoolLevel, selected) {
+  const sel = document.getElementById('ff-homeroom');
+  const max = schoolLevel === 'E' ? 6 : 3;
+  if (!schoolLevel) {
+    sel.innerHTML = '<option value="">먼저 학교급을 선택하세요</option>';
+    return;
+  }
+  const opts = ['<option value="0">비담임</option>'];
+  for (let g = 1; g <= max; g++) opts.push(`<option value="${g}">${g}학년 담임</option>`);
+  sel.innerHTML = '<option value="">선택하세요</option>' + opts.join('');
+  if (selected !== undefined && selected !== '') sel.value = String(selected);
+}
+
+fortuneForm.addEventListener('change', (e) => {
+  if (e.target.name === 'ff-school') {
+    updateHomeroomOptions(e.target.value);
+  }
+});
+
+function readFortuneFormValues() {
+  const birthYear = Number(document.getElementById('ff-year').value);
+  const birthMonth = Number(document.getElementById('ff-month').value);
+  const birthDay = Number(document.getElementById('ff-day').value);
+  const hourVal = document.getElementById('ff-hour').value;
+  const birthHour = hourVal === 'unknown' ? null : (hourVal === '' ? undefined : Number(hourVal));
+  const gender = document.querySelector('input[name="ff-gender"]:checked')?.value;
+  const schoolLevel = document.querySelector('input[name="ff-school"]:checked')?.value;
+  const homeroomVal = document.getElementById('ff-homeroom').value;
+  const homeroom = homeroomVal === '' ? undefined : Number(homeroomVal);
+  const subject = document.getElementById('ff-subject').value;
+  return { birthYear, birthMonth, birthDay, birthHour, gender, schoolLevel, homeroom, subject };
+}
+
+function fillFortuneFormValues(p) {
+  document.getElementById('ff-year').value = p.birthYear || '';
+  document.getElementById('ff-month').value = p.birthMonth || '';
+  document.getElementById('ff-day').value = p.birthDay || '';
+  document.getElementById('ff-hour').value = p.birthHour === null ? 'unknown' : (p.birthHour ?? '');
+  if (p.gender) {
+    const g = document.querySelector(`input[name="ff-gender"][value="${p.gender}"]`);
+    if (g) g.checked = true;
+  }
+  if (p.schoolLevel) {
+    const s = document.querySelector(`input[name="ff-school"][value="${p.schoolLevel}"]`);
+    if (s) s.checked = true;
+    updateHomeroomOptions(p.schoolLevel, p.homeroom);
+  }
+  if (p.subject) document.getElementById('ff-subject').value = p.subject;
+}
+
+function openFortuneForm() {
+  const existing = loadFortuneProfile();
+  if (existing) fillFortuneFormValues(existing);
+  fortuneFormError.hidden = true;
+  fortuneFormModal.hidden = false;
+}
+
+function closeFortuneForm() { fortuneFormModal.hidden = true; }
+
+fortuneForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const p = readFortuneFormValues();
+  const { ok, errors } = validateProfile(p);
+  if (!ok) {
+    const firstMsg = Object.values(errors)[0] || '입력값을 확인해주세요';
+    fortuneFormError.textContent = firstMsg;
+    fortuneFormError.hidden = false;
+    return;
+  }
+  saveFortuneProfile(p);
+  closeFortuneForm();
+  showFortuneResult(p);
+});
+
+function starSpanText(n) { return renderStars(n); }
+
+function showFortuneResult(profile) {
+  const f = buildFortune(profile, new Date());
+  document.getElementById('fortune-iljin').textContent = `${f.iljin.hanja} · ${f.iljin.korean}`;
+  document.getElementById('fortune-date').textContent = formatKoreanDate(f.date);
+
+  const cats = ['total', 'class', 'student', 'office', 'work', 'money'];
+  for (const c of cats) {
+    document.getElementById(`fr-${c}-stars`).textContent = starSpanText(f[c].stars);
+    document.getElementById(`fr-${c}-text`).textContent = f[c].text;
+  }
+  document.getElementById('fr-item-text').textContent = f.item.text;
+  document.getElementById('fr-quote-hanja').textContent = f.quote.hanja;
+  document.getElementById('fr-quote-korean').textContent = f.quote.korean;
+  document.getElementById('fr-tip-text').textContent = f.tip.text;
+
+  fortuneResultModal.hidden = false;
+}
+
+fortuneBtn.addEventListener('click', () => {
+  const existing = loadFortuneProfile();
+  if (existing) showFortuneResult(existing);
+  else openFortuneForm();
+});
+
+fortuneFormModal.addEventListener('click', (e) => {
+  if (e.target.hasAttribute('data-fortune-form-close')) closeFortuneForm();
+});
+fortuneResultModal.addEventListener('click', (e) => {
+  if (e.target.hasAttribute('data-fortune-result-close')) fortuneResultModal.hidden = true;
+});
+
+document.getElementById('fortune-edit-btn').addEventListener('click', () => {
+  fortuneResultModal.hidden = true;
+  openFortuneForm();
+});
+
+let toastTimer;
+function showToast(text) {
+  fortuneToast.textContent = text;
+  fortuneToast.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { fortuneToast.hidden = true; }, 2200);
+}
+
+async function captureResultImage() {
+  const el = document.getElementById('fortune-result');
+  if (typeof window.html2canvas !== 'function') throw new Error('html2canvas not loaded');
+  return await window.html2canvas(el, { backgroundColor: '#fffcf5', scale: 2, useCORS: true });
+}
+
+document.getElementById('fortune-save-btn').addEventListener('click', async () => {
+  try {
+    const canvas = await captureResultImage();
+    const link = document.createElement('a');
+    const today = new Date();
+    const ymd = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, '0')}${String(today.getDate()).padStart(2, '0')}`;
+    link.download = `오늘의_교사운세_${ymd}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    showToast('이미지가 저장되었어요');
+  } catch (err) {
+    console.error(err);
+    showToast('이미지 저장에 실패했어요');
+  }
+});
+
+document.getElementById('fortune-share-btn').addEventListener('click', async () => {
+  const url = window.location.origin + window.location.pathname;
+  const shareText = '오늘의 교사 운세 확인하기';
+  const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+  if (navigator.share && isMobile) {
+    try {
+      const canvas = await captureResultImage();
+      const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+      const file = new File([blob], 'fortune.png', { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ title: '오늘의 교사 운세', text: shareText, url, files: [file] });
+        return;
+      }
+      await navigator.share({ title: '오늘의 교사 운세', text: shareText, url });
+      return;
+    } catch {
+      // fall through to clipboard
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    showToast('링크가 복사되었어요!');
+  } catch {
+    showToast('공유 링크 복사에 실패했어요');
+  }
 });
 
 // ---------- emoji picker ----------
@@ -431,6 +644,8 @@ document.addEventListener('keydown', (e) => {
     if (!helpModal.hidden) helpModal.hidden = true;
     if (!emojiModal.hidden) emojiModal.hidden = true;
     if (!gameModal.hidden) closeGame();
+    if (!fortuneFormModal.hidden) fortuneFormModal.hidden = true;
+    if (!fortuneResultModal.hidden) fortuneResultModal.hidden = true;
   }
 });
 

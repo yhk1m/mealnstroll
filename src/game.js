@@ -1,15 +1,24 @@
 // © 2026 김용현
-// Chrome dino-style runner: press Space/Up/Tap to jump, Down to duck/fall fast.
+// Hallway runner: a teacher dodges school stuff (chairs, balls, books, paper planes).
+// Press Space/Up/Tap to jump, Down to duck/fall fast.
+
+// Ground-level obstacles (short): chair, soccer ball, basketball, backpack
+const SHORT_GLYPHS = ['🪑', '⚽', '🏀', '🎒'];
+// Tall obstacles (jump over): stack of books, filing cabinet
+const TALL_GLYPHS = ['📚', '🗄️'];
+// Flying obstacles: paper airplane (students' mischief)
+const FLY_GLYPHS = ['✈️', '📄'];
 
 const GROUND_Y_RATIO = 0.78;
 const GRAVITY = 0.9;
 const JUMP_V = -14.5;
 const DUCK_GRAVITY = 2.4;
+// Speed rolled back to the original feel; obstacle density raised instead.
 const BASE_SPEED = 6;
 const SPEED_GROWTH = 0.0018; // px/frame per frame
 const MAX_SPEED = 13;
 const SCORE_PER_FRAME = 0.12;
-const BIRD_UNLOCK_SCORE = 200;
+const FLY_UNLOCK_SCORE = 100;
 
 const STATE = { READY: 'ready', RUNNING: 'running', OVER: 'over' };
 
@@ -95,29 +104,32 @@ export function createGame(canvas, { onGameOver, onTick } = {}) {
   }
 
   function spawnObstacle() {
-    // Interval grows with speed so early game isn't overwhelming.
-    const minGap = Math.max(260, 460 - speed * 18);
-    const maxGap = minGap + 260;
+    // Denser spawning: shorter min gap, tighter random spread.
+    const minGap = Math.max(150, 300 - speed * 16);
+    const maxGap = minGap + 130;
     if (obstacles.length && obstacles[obstacles.length - 1].x > W - minGap) return;
     if (obstacles.length && obstacles[obstacles.length - 1].x > W - (minGap + Math.random() * (maxGap - minGap))) return;
 
-    const canBird = score >= BIRD_UNLOCK_SCORE;
+    const canFly = score >= FLY_UNLOCK_SCORE;
     const roll = Math.random();
-    if (canBird && roll < 0.25) {
-      // bird at random height (duckable low / jumpable high)
+    if (canFly && roll < 0.32) {
+      // Paper airplane at random height (duckable low / jumpable high)
       const lowY = groundY - 18;
       const highY = groundY - 54;
       const by = Math.random() < 0.5 ? lowY : highY;
-      obstacles.push({ type: 'bird', x: W + 10, y: by, w: 28, h: 20, wingTick: 0 });
+      const glyph = FLY_GLYPHS[Math.floor(Math.random() * FLY_GLYPHS.length)];
+      obstacles.push({ type: 'fly', x: W + 10, y: by, w: 28, h: 20, wingTick: 0, glyph });
     } else {
-      // cactus cluster: 1~3
-      const count = roll < 0.5 ? 1 : roll < 0.85 ? 2 : 3;
-      const baseW = 16;
+      // Ground obstacle cluster: 1~4 items, biased toward bigger clusters.
+      const count = roll < 0.3 ? 1 : roll < 0.65 ? 2 : roll < 0.9 ? 3 : 4;
+      const baseW = 18;
       const gap = 4;
-      const tall = Math.random() < 0.35;
+      const tall = Math.random() < 0.32;
       const w = baseW * count + gap * (count - 1);
       const h = tall ? 42 : 30;
-      obstacles.push({ type: 'cactus', x: W + 10, y: groundY - h, w, h, count, tall });
+      const pool = tall ? TALL_GLYPHS : SHORT_GLYPHS;
+      const glyph = pool[Math.floor(Math.random() * pool.length)];
+      obstacles.push({ type: 'ground', x: W + 10, y: groundY - h, w, h, count, tall, glyph });
     }
   }
 
@@ -204,7 +216,7 @@ export function createGame(canvas, { onGameOver, onTick } = {}) {
     drawDino();
     drawHUD();
 
-    if (state === STATE.READY) drawCenterText('Space / 탭으로 점프하기 🦖');
+    if (state === STATE.READY) drawCenterText('Space / 탭으로 점프하기 👨‍🏫');
     else if (state === STATE.OVER) drawCenterText(`게임 오버 · ${Math.floor(score)}점 · 다시하려면 Space`);
   }
 
@@ -249,27 +261,27 @@ export function createGame(canvas, { onGameOver, onTick } = {}) {
       ? (Math.floor(dino.legTick / 6) === 0 ? 0 : 1)
       : 0;
     const y = dino.y + runningBob;
-    ctx.fillText('🦖', dino.x, y);
+    ctx.fillText('👨‍🏫', dino.x, y);
     ctx.restore();
   }
 
   function drawObstacles() {
     ctx.save();
-    ctx.font = '28px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",serif';
     ctx.textBaseline = 'top';
     ctx.textAlign = 'left';
     for (const o of obstacles) {
-      if (o.type === 'cactus') {
-        const glyph = o.tall ? '🌵' : '🌱';
+      if (o.type === 'ground') {
+        const size = o.tall ? 38 : 28;
+        ctx.font = `${size}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",serif`;
         for (let i = 0; i < o.count; i++) {
-          const size = o.tall ? 38 : 28;
-          ctx.font = `${size}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",serif`;
-          ctx.fillText(glyph, o.x + i * 20, o.y);
+          ctx.fillText(o.glyph, o.x + i * 20, o.y);
         }
-      } else if (o.type === 'bird') {
+      } else if (o.type === 'fly') {
         o.wingTick = (o.wingTick + 1) % 16;
-        const flap = Math.floor(o.wingTick / 8) === 0 ? '🐦' : '🦅';
-        ctx.fillText(flap, o.x, o.y);
+        // Subtle vertical flutter for the flying paper
+        const flutter = Math.floor(o.wingTick / 8) === 0 ? 0 : 2;
+        ctx.font = '26px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",serif';
+        ctx.fillText(o.glyph, o.x, o.y + flutter);
       }
     }
     ctx.restore();
