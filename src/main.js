@@ -14,7 +14,6 @@ import {
   renderStars
 } from './fortune.js';
 
-const FADE_MS = 1400;
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'admin';
 const ADMIN_AUTH_KEY = 'mealnstroll.admin.authed';
 
@@ -59,7 +58,6 @@ const motion = { ...randomMotion(), angle0: GATE_ANGLE, startedAt: Date.now() };
 let myBestScore = loadBestScore();
 const me = { id: selfId, you: true, ...profile, ...motion, bestScore: myBestScore };
 const others = new Map(); // id -> avatar state
-const leaving = new Map(); // id -> avatar with exitAt (for departure animation)
 
 // ---------- DOM ----------
 const canvas = document.getElementById('scene');
@@ -104,8 +102,6 @@ const rt = createRealtime({
         ...p,
         bubble: existing?.bubble || null
       });
-      // If someone re-joined while in leaving, cancel the exit animation
-      if (leaving.has(p.id)) leaving.delete(p.id);
     }
     onlineCount.textContent = nextIds.size;
     if (gameOpen) renderRanking();
@@ -801,31 +797,15 @@ window.addEventListener('beforeunload', () => rt.leave());
 function loop() {
   const now = pausedAt ?? Date.now();
 
-  // Compute fade for me (entering)
-  me.alpha = fadeInAlpha(me.startedAt, now);
+  // No fade-in / fade-out: avatars appear and disappear instantly.
+  me.alpha = 1;
+  for (const av of others.values()) av.alpha = 1;
 
-  // Prune leaving avatars past their exit time, set fade-out alpha
-  for (const [id, av] of leaving) {
-    const remaining = av.exitAt - now;
-    if (remaining <= 0) { leaving.delete(id); continue; }
-    av.alpha = Math.min(1, remaining / FADE_MS);
-  }
-
-  // Entering fade for others too
-  for (const av of others.values()) av.alpha = fadeInAlpha(av.startedAt, now);
-
-  const avatars = [me, ...others.values(), ...leaving.values()];
+  const avatars = [me, ...others.values()];
   scene.render(theme, avatars, now);
   requestAnimationFrame(loop);
 }
 loop();
-
-function fadeInAlpha(startedAt, now) {
-  if (!startedAt) return 1;
-  const age = now - startedAt;
-  if (age >= FADE_MS) return 1;
-  return Math.max(0, age / FADE_MS);
-}
 
 
 // ---------- helpers ----------

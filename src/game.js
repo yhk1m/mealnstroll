@@ -14,13 +14,15 @@ const GRAVITY = 0.9;
 const JUMP_V = -14.5;
 const DUCK_GRAVITY = 2.4;
 // Speed is constant — difficulty comes from obstacles, not tempo.
-const BASE_SPEED = 6;
+const BASE_SPEED = 5;
 const SPEED_GROWTH = 0; // no acceleration over time
-const MAX_SPEED = 6;
+const MAX_SPEED = 5;
 const SCORE_PER_FRAME = 0.12;
 const FLY_UNLOCK_SCORE = 100;
-// Obstacle difficulty ramps from 0 → 1 over DIFFICULTY_RAMP_SCORE points.
-const DIFFICULTY_RAMP_SCORE = 400;
+// Difficulty steps up every 50 points (tier = floor(score/50)).
+// 8 tiers in total → reaches max at 400 points.
+const DIFFICULTY_STEP_POINTS = 50;
+const DIFFICULTY_TIERS = 8;
 
 const STATE = { READY: 'ready', RUNNING: 'running', OVER: 'over' };
 
@@ -106,16 +108,17 @@ export function createGame(canvas, { onGameOver, onTick } = {}) {
   }
 
   function spawnObstacle() {
-    // d ∈ [0, 1]: difficulty ramp based on accumulated score (time played).
-    const d = Math.min(1, score / DIFFICULTY_RAMP_SCORE);
-    // Gap shrinks as difficulty rises: 280→120 min, 430→180 max.
-    const minGap = Math.max(120, 280 - d * 160);
-    const maxGap = minGap + Math.max(60, 150 - d * 90);
+    // Difficulty steps up every 50 points, clamped to [0, 1].
+    const tier = Math.floor(score / DIFFICULTY_STEP_POINTS);
+    const d = Math.min(1, tier / DIFFICULTY_TIERS);
+    // Start roomy (like the original Chrome runner), tighten as d rises.
+    const minGap = Math.max(150, 380 - d * 230);   // 380 → 150
+    const maxGap = minGap + Math.max(80, 240 - d * 160); // +240 → +80
     if (obstacles.length && obstacles[obstacles.length - 1].x > W - minGap) return;
     if (obstacles.length && obstacles[obstacles.length - 1].x > W - (minGap + Math.random() * (maxGap - minGap))) return;
 
     const canFly = score >= FLY_UNLOCK_SCORE;
-    const flyProb = 0.22 + d * 0.23; // 22%→45% airborne as difficulty rises
+    const flyProb = 0.18 + d * 0.22; // 18% → 40% airborne as difficulty rises
     const roll = Math.random();
     if (canFly && roll < flyProb) {
       // Paper airplane at random height (duckable low / jumpable high)
@@ -128,12 +131,12 @@ export function createGame(canvas, { onGameOver, onTick } = {}) {
       // Cluster size biases toward larger with difficulty.
       const r = Math.random();
       let count;
-      if (d < 0.35) count = r < 0.55 ? 1 : r < 0.85 ? 2 : 3;
-      else if (d < 0.7) count = r < 0.3 ? 1 : r < 0.65 ? 2 : r < 0.9 ? 3 : 4;
-      else count = r < 0.15 ? 1 : r < 0.45 ? 2 : r < 0.8 ? 3 : 4;
+      if (d < 0.35) count = r < 0.7 ? 1 : r < 0.9 ? 2 : 3;
+      else if (d < 0.7) count = r < 0.4 ? 1 : r < 0.75 ? 2 : r < 0.95 ? 3 : 4;
+      else count = r < 0.2 ? 1 : r < 0.5 ? 2 : r < 0.8 ? 3 : 4;
       const baseW = 18;
       const gap = 4;
-      const tall = Math.random() < (0.28 + d * 0.12); // 28%→40% tall
+      const tall = Math.random() < (0.25 + d * 0.15); // 25% → 40% tall
       const w = baseW * count + gap * (count - 1);
       const h = tall ? 42 : 30;
       const pool = tall ? TALL_GLYPHS : SHORT_GLYPHS;
