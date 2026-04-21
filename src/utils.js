@@ -102,7 +102,7 @@ export function directionForToday(date = new Date()) {
 }
 
 export function randomMotion() {
-  const speed = 0.12 + Math.random() * 0.10; // rad/sec
+  const speed = 0.07 + Math.random() * 0.06; // rad/sec
   return {
     speed: speed * directionForToday(),
     startedAt: Date.now()
@@ -128,6 +128,19 @@ export function saveProfile(profile) {
 export function uuid() {
   if (crypto.randomUUID) return crypto.randomUUID();
   return 'u-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+const BEST_SCORE_KEY = 'mealnstroll.dino.best';
+
+export function loadBestScore() {
+  const n = Number(localStorage.getItem(BEST_SCORE_KEY) || 0);
+  return Number.isFinite(n) ? n : 0;
+}
+
+export function saveBestScore(score) {
+  try {
+    localStorage.setItem(BEST_SCORE_KEY, String(score));
+  } catch {}
 }
 
 export function formatTime(ts) {

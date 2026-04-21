@@ -20,7 +20,11 @@
         <header class="sidebar-header">
           <div class="title-row">
             <h1>🍱🚶🏻‍➡️급식먹고산책</h1>
-            <button id="help-btn" type="button" aria-label="사용법" title="사용법">?</button>
+            <div class="title-buttons">
+              <button id="game-btn" type="button" aria-label="공룡 달리기" title="🦖 급식공룡달리기">🎮</button>
+              <button id="pause-btn" type="button" aria-label="산책 멈춤" title="산책 멈춤 (정신없을 때)">⏸</button>
+              <button id="help-btn" type="button" aria-label="사용법" title="사용법">?</button>
+            </div>
           </div>
           <p class="tagline">급식 후 산책하며 나누는 이야기</p>
           <div class="me-row">
@@ -138,6 +142,26 @@
         </ul>
 
         <p class="help-tip">💡 점심 먹고 나른할 때, 운동장 한 바퀴 돌며 잠깐 수다 떨기에 딱 좋아요.</p>
+      </div>
+    </div>
+
+    <div id="game-modal" class="help-modal" hidden>
+      <div class="help-backdrop" data-game-close></div>
+      <div class="help-card game-card" role="dialog" aria-modal="true" aria-labelledby="game-title">
+        <button class="help-close" type="button" data-game-close aria-label="닫기">×</button>
+        <h2 id="game-title">🦖 급식공룡달리기</h2>
+        <p class="game-hint">Space · ↑ · 탭/클릭으로 점프 / ↓로 빠르게 내려오기</p>
+        <div class="game-stage">
+          <canvas id="dino-canvas"></canvas>
+        </div>
+        <div class="game-meta">
+          <span class="game-score">현재 <b id="game-current">0</b>점</span>
+          <span class="game-best">내 최고 <b id="game-best">0</b>점</span>
+          <button id="game-restart" type="button" class="admin-btn">다시 시작</button>
+        </div>
+        <h3 class="picker-sub">🏆 지금 접속자 랭킹</h3>
+        <ol id="game-ranking" class="game-ranking"></ol>
+        <p class="game-tip">같이 산책 중인 선생님들과의 실시간 랭킹이에요. 신기록을 깨면 채팅에 자동으로 공지돼요.</p>
       </div>
     </div>
 

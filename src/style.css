@@ -110,7 +110,15 @@ html, body {
   letter-spacing: -0.3px;
 }
 
-#help-btn {
+.title-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+#help-btn,
+#pause-btn {
   width: 32px;
   height: 32px;
   border-radius: 50%;
@@ -132,15 +140,106 @@ html, body {
   margin-bottom: 2px;
 }
 
-#help-btn:hover {
+#help-btn:hover,
+#pause-btn:hover {
   background: var(--accent);
   color: #fff;
   border-color: var(--ink);
 }
 
-#help-btn:active {
+#help-btn:active,
+#pause-btn:active {
   transform: translateY(5px);
   box-shadow: 0 1px 0 var(--ink);
+}
+
+#pause-btn.paused {
+  background: #ffd86b;
+  color: var(--ink);
+}
+
+/* ---------- dino game modal ---------- */
+.game-card {
+  max-width: 560px;
+}
+.game-hint {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.game-stage {
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f6f1e4;
+  aspect-ratio: 16 / 5;
+  width: 100%;
+}
+#dino-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: manipulation;
+  cursor: pointer;
+  outline: none;
+}
+.game-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 6px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  flex-wrap: wrap;
+}
+.game-meta b { color: var(--ink); font-size: 15px; }
+.game-meta .admin-btn { margin-left: auto; padding: 6px 12px; font-size: 13px; }
+.game-ranking {
+  list-style: none;
+  margin: 6px 0 8px;
+  padding: 8px 10px;
+  background: #faf7ef;
+  border: 1px solid #e8dfc9;
+  border-radius: 8px;
+  max-height: 180px;
+  overflow-y: auto;
+  font-size: 13px;
+}
+.game-ranking li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 2px;
+}
+.game-ranking li.me {
+  background: #fff7d6;
+  border-radius: 4px;
+  padding: 3px 6px;
+  margin: 0 -4px;
+}
+.game-ranking .rank {
+  min-width: 24px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+.game-ranking .who {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.game-ranking .score {
+  font-weight: 700;
+  color: var(--accent);
+}
+.game-ranking .empty {
+  color: var(--ink-soft);
+  padding: 6px 2px;
+}
+.game-tip {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--ink-soft);
 }
 
 .tagline {
@@ -788,7 +887,8 @@ html, body {
   .sidebar-header h1 { font-size: 17px; }
   .tagline { font-size: 11px; margin: 3px 0 10px; }
 
-  #help-btn {
+  #help-btn,
+  #pause-btn {
     width: 24px;
     height: 24px;
     font-size: 13px;

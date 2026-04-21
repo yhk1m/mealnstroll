@@ -388,8 +388,8 @@ export function createScene(canvas, theme) {
     return { x: cx + pt.x, y: cy + pt.y, angle };
   }
 
-  function screenPos(avatar) {
-    return positionFor(avatar, Date.now());
+  function screenPos(avatar, nowOverride) {
+    return positionFor(avatar, nowOverride ?? Date.now());
   }
 
   function drawAvatar(avatar, now) {
@@ -665,8 +665,8 @@ export function createScene(canvas, theme) {
     ctx.restore();
   }
 
-  function render(theme, avatars) {
-    const now = Date.now();
+  function render(theme, avatars, nowOverride) {
+    const now = nowOverride ?? Date.now();
     drawGround(theme);
     drawDecor(theme, now);
     drawSchool(theme);

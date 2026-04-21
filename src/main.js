@@ -3,7 +3,8 @@ import { createScene, GATE_ANGLE, nextGateCrossingTime } from './scene.js';
 import { createChatUI } from './chat.js';
 import { createRealtime } from './realtime.js';
 import { currentTheme, applyThemeToCss } from './theme.js';
-import { loadProfile, saveProfile, randomProfile, randomMotion, uuid, EMOJI_CHOICES, HEAD_BG_CHOICES, DEFAULT_HEAD_BG, PALETTE } from './utils.js';
+import { loadProfile, saveProfile, randomProfile, randomMotion, uuid, EMOJI_CHOICES, HEAD_BG_CHOICES, DEFAULT_HEAD_BG, PALETTE, loadBestScore, saveBestScore } from './utils.js';
+import { createGame } from './game.js';
 
 const FADE_MS = 1400;
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'admin';
@@ -47,7 +48,8 @@ if (!profile.headBg) profile.headBg = DEFAULT_HEAD_BG; // migrate older profiles
 saveProfile(profile);
 const motion = { ...randomMotion(), angle0: GATE_ANGLE, startedAt: Date.now() };
 
-const me = { id: selfId, you: true, ...profile, ...motion };
+let myBestScore = loadBestScore();
+const me = { id: selfId, you: true, ...profile, ...motion, bestScore: myBestScore };
 const others = new Map(); // id -> avatar state
 const leaving = new Map(); // id -> avatar with exitAt (for departure animation)
 
@@ -98,6 +100,7 @@ const rt = createRealtime({
       if (leaving.has(p.id)) leaving.delete(p.id);
     }
     onlineCount.textContent = nextIds.size;
+    if (gameOpen) renderRanking();
   },
   onChat: (msg) => {
     chat.append(msg);
@@ -156,8 +159,135 @@ nameInput.addEventListener('input', () => {
 const helpBtn = document.getElementById('help-btn');
 const helpModal = document.getElementById('help-modal');
 helpBtn.addEventListener('click', () => { helpModal.hidden = false; });
+
+// ---------- pause (local-only freeze of the canvas animation) ----------
+let pausedAt = null;
+const pauseBtn = document.getElementById('pause-btn');
+pauseBtn.addEventListener('click', () => {
+  if (pausedAt === null) {
+    pausedAt = Date.now();
+    pauseBtn.textContent = '▶';
+    pauseBtn.classList.add('paused');
+    pauseBtn.setAttribute('aria-label', '산책 다시 시작');
+    pauseBtn.title = '산책 다시 시작';
+  } else {
+    pausedAt = null;
+    pauseBtn.textContent = '⏸';
+    pauseBtn.classList.remove('paused');
+    pauseBtn.setAttribute('aria-label', '산책 멈춤');
+    pauseBtn.title = '산책 멈춤 (정신없을 때)';
+  }
+});
 helpModal.addEventListener('click', (e) => {
   if (e.target.hasAttribute('data-close')) helpModal.hidden = true;
+});
+
+// ---------- dino game ----------
+const gameBtn = document.getElementById('game-btn');
+const gameModal = document.getElementById('game-modal');
+const gameCanvas = document.getElementById('dino-canvas');
+const gameCurrentEl = document.getElementById('game-current');
+const gameBestEl = document.getElementById('game-best');
+const gameRestartBtn = document.getElementById('game-restart');
+const gameRankingEl = document.getElementById('game-ranking');
+
+let game = null;
+let gameOpen = false;
+
+function renderRanking() {
+  const rows = [];
+  for (const av of others.values()) {
+    if ((av.bestScore || 0) > 0) rows.push({ id: av.id, name: av.name || '익명', emoji: av.emoji || '🙂', score: av.bestScore, me: false });
+  }
+  if ((me.bestScore || 0) > 0) rows.push({ id: me.id, name: me.name || '나', emoji: me.emoji || '🙂', score: me.bestScore, me: true });
+  rows.sort((a, b) => b.score - a.score);
+  const top = rows.slice(0, 10);
+
+  gameRankingEl.innerHTML = '';
+  if (top.length === 0) {
+    const li = document.createElement('li');
+    li.className = 'empty';
+    li.textContent = '아직 기록이 없어요. 첫 점수의 주인공이 되어보세요!';
+    gameRankingEl.appendChild(li);
+    return;
+  }
+  top.forEach((row, i) => {
+    const li = document.createElement('li');
+    if (row.me) li.classList.add('me');
+    const rank = document.createElement('span');
+    rank.className = 'rank';
+    rank.textContent = `${i + 1}.`;
+    const who = document.createElement('span');
+    who.className = 'who';
+    who.textContent = `${row.emoji} ${row.name}${row.me ? ' (나)' : ''}`;
+    const score = document.createElement('span');
+    score.className = 'score';
+    score.textContent = `${row.score}점`;
+    li.append(rank, who, score);
+    gameRankingEl.appendChild(li);
+  });
+}
+
+function openGame() {
+  gameModal.hidden = false;
+  gameOpen = true;
+  gameBestEl.textContent = me.bestScore || 0;
+  gameCurrentEl.textContent = 0;
+  renderRanking();
+  if (!game) {
+    game = createGame(gameCanvas, {
+      onTick: (s) => { gameCurrentEl.textContent = s; },
+      onGameOver: (finalScore) => {
+        gameCurrentEl.textContent = finalScore;
+        if (finalScore > (me.bestScore || 0)) {
+          me.bestScore = finalScore;
+          saveBestScore(finalScore);
+          gameBestEl.textContent = finalScore;
+          rt.updateSelf({ bestScore: finalScore });
+          rt.sendChat(`🏆 급식공룡달리기 ${finalScore}점 신기록!`);
+          renderRanking();
+        }
+      }
+    });
+  } else {
+    game.reset();
+  }
+  // focus canvas so keyboard works
+  setTimeout(() => gameCanvas.focus?.(), 0);
+}
+
+function closeGame() {
+  gameModal.hidden = true;
+  gameOpen = false;
+  game?.reset();
+}
+
+gameBtn.addEventListener('click', openGame);
+gameModal.addEventListener('click', (e) => {
+  if (e.target.hasAttribute('data-game-close')) closeGame();
+});
+gameRestartBtn.addEventListener('click', () => game?.start());
+
+// Canvas input: click/tap to jump
+gameCanvas.addEventListener('pointerdown', (e) => {
+  e.preventDefault();
+  game?.jump();
+});
+
+// Keyboard input (only when modal is open)
+document.addEventListener('keydown', (e) => {
+  if (!gameOpen) return;
+  if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'Up') {
+    e.preventDefault();
+    game?.jump();
+  } else if (e.key === 'ArrowDown' || e.key === 'Down') {
+    e.preventDefault();
+    game?.setDucking(true);
+  }
+});
+document.addEventListener('keyup', (e) => {
+  if (!gameOpen) return;
+  if (e.key === 'ArrowDown' || e.key === 'Down') game?.setDucking(false);
 });
 
 // ---------- emoji picker ----------
@@ -278,7 +408,7 @@ canvas.addEventListener('click', (e) => {
   const rect = canvas.getBoundingClientRect();
   const cxp = e.clientX - rect.left;
   const cyp = e.clientY - rect.top;
-  const pos = scene.screenPos(me);
+  const pos = scene.screenPos(me, pausedAt);
   // head area: roughly centered at pos.y - 6, radius ~16
   const dx = cxp - pos.x;
   const dy = cyp - (pos.y - 6);
@@ -290,7 +420,7 @@ canvas.addEventListener('mousemove', (e) => {
   const rect = canvas.getBoundingClientRect();
   const cxp = e.clientX - rect.left;
   const cyp = e.clientY - rect.top;
-  const pos = scene.screenPos(me);
+  const pos = scene.screenPos(me, pausedAt);
   const dx = cxp - pos.x;
   const dy = cyp - (pos.y - 6);
   canvas.classList.toggle('pointer-on-self', dx * dx + dy * dy < 18 * 18);
@@ -300,6 +430,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     if (!helpModal.hidden) helpModal.hidden = true;
     if (!emojiModal.hidden) emojiModal.hidden = true;
+    if (!gameModal.hidden) closeGame();
   }
 });
 
@@ -452,7 +583,7 @@ window.addEventListener('beforeunload', () => rt.leave());
 
 // ---------- render loop ----------
 function loop() {
-  const now = Date.now();
+  const now = pausedAt ?? Date.now();
 
   // Compute fade for me (entering)
   me.alpha = fadeInAlpha(me.startedAt, now);
@@ -468,7 +599,7 @@ function loop() {
   for (const av of others.values()) av.alpha = fadeInAlpha(av.startedAt, now);
 
   const avatars = [me, ...others.values(), ...leaving.values()];
-  scene.render(theme, avatars);
+  scene.render(theme, avatars, now);
   requestAnimationFrame(loop);
 }
 loop();
@@ -491,7 +622,8 @@ function serializeMe() {
     headBg: me.headBg,
     angle0: me.angle0,
     speed: me.speed,
-    startedAt: me.startedAt
+    startedAt: me.startedAt,
+    bestScore: me.bestScore || 0
   };
 }
 
