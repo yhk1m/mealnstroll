@@ -469,7 +469,7 @@ export function createScene(canvas, theme) {
     return positionFor(avatar, nowOverride ?? Date.now());
   }
 
-  function drawAvatar(avatar, now) {
+  function drawAvatar(avatar, now, theme) {
     const p = positionFor(avatar, now);
     const alpha = avatar.alpha ?? 1;
     if (alpha <= 0) return p;
@@ -601,6 +601,10 @@ export function createScene(canvas, theme) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(avatar.emoji || '🙂', p.x, headY);
+
+    // Umbrella when it's raining / stormy.
+    const rainy = theme && (theme.decor === 'rain' || theme.decor === 'thunder' || theme.decor === 'typhoon');
+    if (rainy) drawUmbrella(p.x, headY - headR - 2, avatar.color);
 
     // effects in FRONT of character
     drawFrontEffects(p, headY, level, now);
@@ -745,13 +749,84 @@ export function createScene(canvas, theme) {
   function render(theme, avatars, nowOverride) {
     const now = nowOverride ?? Date.now();
     drawGround(theme);
+    drawNightSky(theme, now);
     drawDecor(theme, now);
     drawSchool(theme);
 
     // sort avatars by y so ones in front overlap correctly
     const withPos = avatars.map(a => ({ a, p: positionFor(a, now) }));
     withPos.sort((x, y) => x.p.y - y.p.y);
-    for (const { a } of withPos) drawAvatar(a, now);
+    for (const { a } of withPos) drawAvatar(a, now, theme);
+  }
+
+  function drawNightSky(t, now) {
+    if (t.timeOfDay !== 'night') return;
+    ctx.save();
+    // Twinkling stars in the upper half of the sky.
+    for (let i = 0; i < 55; i++) {
+      const x = ((i * 131 + decorSeed * 700) % width);
+      const y = ((i * 67) % Math.floor(height * 0.55));
+      const blink = 0.5 + 0.5 * Math.sin(now / 400 + i);
+      ctx.fillStyle = `rgba(255,255,255,${0.35 + blink * 0.55})`;
+      ctx.beginPath();
+      ctx.arc(x, y, 1.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Moon (upper-right).
+    const mx = width - 90, my = 70, mr = 28;
+    ctx.fillStyle = 'rgba(255,240,200,0.95)';
+    ctx.beginPath();
+    ctx.arc(mx, my, mr, 0, Math.PI * 2);
+    ctx.fill();
+    // Subtle craters.
+    ctx.fillStyle = 'rgba(225,205,155,0.6)';
+    ctx.beginPath();
+    ctx.arc(mx - 8, my + 6, 5, 0, Math.PI * 2);
+    ctx.arc(mx + 6, my - 5, 3.5, 0, Math.PI * 2);
+    ctx.arc(mx + 4, my + 8, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawUmbrella(cxP, topY, color) {
+    const r = 20;
+    ctx.save();
+    ctx.fillStyle = color || '#ff6b6b';
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 1.5;
+    // canopy (semicircle)
+    ctx.beginPath();
+    ctx.arc(cxP, topY, r, Math.PI, Math.PI * 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // ribs
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth = 1;
+    for (let i = 1; i < 4; i++) {
+      const a = Math.PI + (Math.PI * i / 4);
+      ctx.beginPath();
+      ctx.moveTo(cxP, topY);
+      ctx.lineTo(cxP + Math.cos(a) * r, topY + Math.sin(a) * r);
+      ctx.stroke();
+    }
+    // tip
+    ctx.fillStyle = '#444';
+    ctx.beginPath();
+    ctx.arc(cxP, topY - 2, 2, 0, Math.PI * 2);
+    ctx.fill();
+    // handle
+    ctx.strokeStyle = '#5c3a1d';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(cxP, topY);
+    ctx.lineTo(cxP, topY + 10);
+    ctx.stroke();
+    // curved hook
+    ctx.beginPath();
+    ctx.arc(cxP + 3, topY + 12, 3.5, Math.PI * 0.9, Math.PI * 2.1, false);
+    ctx.stroke();
+    ctx.restore();
   }
 
   return { render, resize, screenPos };

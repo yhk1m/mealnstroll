@@ -101,6 +101,17 @@ chat.append({ system: true, text: `${theme.label}의 산책을 시작합니다 �
   }
 })();
 
+// --- keep the time-of-day palette fresh (day → dusk → night transitions) ---
+setInterval(() => {
+  const fresh = currentTheme();
+  if (fresh.timeOfDay !== theme.timeOfDay) {
+    const preservedDecor = theme.decor;
+    Object.assign(theme, fresh, { decor: preservedDecor });
+    applyThemeToCss(theme);
+    chat.append({ system: true, text: `🌇 ${theme.label}` });
+  }
+}, 5 * 60 * 1000);
+
 // ---------- realtime ----------
 const rt = createRealtime({
   selfId,
