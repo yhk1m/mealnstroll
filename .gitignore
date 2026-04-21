@@ -5,6 +5,8 @@ dist
 .vercel
 .DS_Store
 *.zip
+*.ai
+*.psd
 DungGeunMo WebFont/
 
 .vercel
