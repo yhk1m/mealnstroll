@@ -507,6 +507,134 @@ html, body {
 }
 .game-card h3.picker-sub { margin: 6px 0 2px; font-size: 12.5px; }
 
+.game-ranking-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+.taunt-btn {
+  padding: 5px 12px;
+  font-size: 12.5px;
+  font-family: inherit;
+  font-weight: 700;
+  border: 2px solid #c0392b;
+  background: #c0392b;
+  color: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 2px 0 #7a2419;
+  transition: transform 0.08s, box-shadow 0.08s, filter 0.12s;
+}
+.taunt-btn:hover { filter: brightness(1.1); }
+.taunt-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 0 0 #7a2419;
+}
+
+/* ---------- 도발장 capture card ---------- */
+.taunt-capture {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  width: 420px;
+  padding: 22px 22px 16px;
+  background: linear-gradient(160deg, #fff8e0 0%, #ffe0a0 100%);
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  box-sizing: border-box;
+  font-family: "Jua", "Pretendard", system-ui, sans-serif;
+  color: #2b2b2b;
+}
+.taunt-title {
+  font-size: 24px;
+  text-align: center;
+  letter-spacing: -0.3px;
+}
+.taunt-subtitle {
+  font-size: 12px;
+  color: #7a5b33;
+  text-align: center;
+  margin: 4px 0 14px;
+}
+.taunt-list {
+  list-style: none;
+  padding: 10px 12px;
+  margin: 0 0 14px;
+  background: #fff;
+  border: 2px solid #c0392b;
+  border-radius: 10px;
+}
+.taunt-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 6px;
+  border-radius: 6px;
+  font-size: 15px;
+  border-bottom: 1px dashed #eee;
+}
+.taunt-list li:last-child { border-bottom: none; }
+.taunt-list li.me {
+  background: #fff1a0;
+  font-weight: 700;
+  box-shadow: 0 0 0 2px var(--accent) inset;
+}
+.taunt-list .rank {
+  min-width: 40px;
+  font-weight: 700;
+  color: #c0392b;
+}
+.taunt-list .who {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.taunt-list .score {
+  font-weight: 700;
+  color: var(--ink);
+}
+.taunt-message {
+  text-align: center;
+  font-size: 17px;
+  line-height: 1.45;
+  margin: 0 0 12px;
+  padding: 10px 8px;
+  background: rgba(255,255,255,0.55);
+  border-radius: 10px;
+}
+.taunt-footer {
+  text-align: center;
+  font-size: 11px;
+  color: #7a5b33;
+}
+
+/* ---------- help modal: dismiss today + footnote ---------- */
+.help-dismiss {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 0 6px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  user-select: none;
+}
+.help-dismiss input {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+.help-footnote {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  text-align: center;
+}
+
 .tagline {
   margin: 4px 0 12px;
   font-size: 12px;

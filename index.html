@@ -151,6 +151,12 @@
         </ul>
 
         <p class="help-tip">💡 점심 먹고 나른할 때, 운동장 한 바퀴 돌며 잠깐 수다 떨기에 딱 좋아요.</p>
+
+        <label class="help-dismiss">
+          <input type="checkbox" id="help-dismiss-today" />
+          <span>오늘은 이 안내 그만 보기</span>
+        </label>
+        <p class="help-footnote">언제든 오른쪽 위 <b>?</b> 버튼을 누르면 다시 볼 수 있어요.</p>
       </div>
     </div>
 
@@ -315,6 +321,15 @@
 
     <div id="fortune-toast" class="fortune-toast" hidden></div>
 
+    <!-- Offscreen capture target for the "도발하기" image -->
+    <div id="taunt-capture" class="taunt-capture" aria-hidden="true">
+      <div class="taunt-title">⚔️ 복도달리기 도발장</div>
+      <div class="taunt-subtitle" id="taunt-subtitle"></div>
+      <ol class="taunt-list" id="taunt-list"></ol>
+      <p class="taunt-message" id="taunt-message"></p>
+      <div class="taunt-footer">🏫 급식먹고산책 · bgnl.kr</div>
+    </div>
+
     <div id="game-modal" class="help-modal" hidden>
       <div class="help-backdrop" data-game-close></div>
       <div class="help-card game-card" role="dialog" aria-modal="true" aria-labelledby="game-title">
@@ -329,7 +344,10 @@
           <span class="game-best">내 최고 <b id="game-best">0</b>점</span>
           <button id="game-restart" type="button" class="admin-btn">다시 시작</button>
         </div>
-        <h3 class="picker-sub">🏆 지금 접속자 랭킹</h3>
+        <div class="game-ranking-head">
+          <h3 class="picker-sub">🏆 지금 접속자 랭킹</h3>
+          <button id="taunt-btn" type="button" class="taunt-btn" title="내 주변 랭킹 5명을 이미지로 공유해 도발하기">⚔️ 도발하기</button>
+        </div>
         <ol id="game-ranking" class="game-ranking"></ol>
         <p class="game-tip">같이 산책 중인 선생님들과의 실시간 랭킹이에요. 신기록을 깨면 채팅에 자동으로 공지돼요.</p>
       </div>

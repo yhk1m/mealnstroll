@@ -182,7 +182,30 @@ nameInput.addEventListener('input', () => {
 
 const helpBtn = document.getElementById('help-btn');
 const helpModal = document.getElementById('help-modal');
-helpBtn.addEventListener('click', () => { helpModal.hidden = false; });
+const helpDismissCheckbox = document.getElementById('help-dismiss-today');
+const HELP_DISMISS_KEY = 'mealnstroll.help.dismissedDate';
+
+function todayYmd() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Auto-open the help modal on startup unless the user dismissed it today.
+if (localStorage.getItem(HELP_DISMISS_KEY) !== todayYmd()) {
+  helpModal.hidden = false;
+}
+
+function closeHelpModal() {
+  if (helpDismissCheckbox && helpDismissCheckbox.checked) {
+    localStorage.setItem(HELP_DISMISS_KEY, todayYmd());
+  }
+  helpModal.hidden = true;
+}
+
+helpBtn.addEventListener('click', () => {
+  if (helpDismissCheckbox) helpDismissCheckbox.checked = false;
+  helpModal.hidden = false;
+});
 
 // ---------- pause (local-only freeze of the canvas animation) ----------
 let pausedAt = null;
@@ -203,7 +226,7 @@ pauseBtn.addEventListener('click', () => {
   }
 });
 helpModal.addEventListener('click', (e) => {
-  if (e.target.hasAttribute('data-close')) helpModal.hidden = true;
+  if (e.target.hasAttribute('data-close')) closeHelpModal();
 });
 
 // ---------- dino game ----------
@@ -312,6 +335,137 @@ document.addEventListener('keydown', (e) => {
 document.addEventListener('keyup', (e) => {
   if (!gameOpen) return;
   if (e.key === 'ArrowDown' || e.key === 'Down') game?.setDucking(false);
+});
+
+// ---------- 복도달리기 도발하기 ----------
+const tauntBtn = document.getElementById('taunt-btn');
+const tauntCapture = document.getElementById('taunt-capture');
+const tauntListEl = document.getElementById('taunt-list');
+const tauntSubtitle = document.getElementById('taunt-subtitle');
+const tauntMsgEl = document.getElementById('taunt-message');
+
+function getAllRankingRows() {
+  const rows = [];
+  for (const av of others.values()) {
+    if ((av.bestScore || 0) > 0) {
+      rows.push({ id: av.id, name: av.name || '익명', emoji: av.emoji || '🙂', score: av.bestScore, me: false });
+    }
+  }
+  if ((me.bestScore || 0) > 0) {
+    rows.push({ id: me.id, name: me.name || '나', emoji: me.emoji || '🙂', score: me.bestScore, me: true });
+  }
+  rows.sort((a, b) => b.score - a.score);
+  return rows;
+}
+
+function pickTauntMessage(myRank, total) {
+  const pools = {
+    top: [
+      '이번에도 내가 1등! 따라올 테면 따라와봐 🏆',
+      '지금 이 점수, 네가 깰 수 있겠어? 😎',
+      '1등 자리 양보 안 해. 달려와 보시지.',
+      '복도의 제왕은 나야 💨'
+    ],
+    high: [
+      '상위권의 여유... 덤벼볼래? 😏',
+      '한 칸만 더 올라가면 1등이야. 같이 해볼래?',
+      '따라잡을 수 있으면 따라잡아 보시지!',
+      '좀 하는데? 그런데 나한텐 안 돼 🙃'
+    ],
+    mid: [
+      '중위권의 저력을 보여줄게 🔥',
+      '네가 나보다 위라고? 오늘 뒤집는다.',
+      '지금부터 진짜 시작이야 👊',
+      '이 정도면 나쁘지 않지. 붙어볼래?'
+    ],
+    low: [
+      '어허, 이건 시작일 뿐이야 🙃',
+      '한 판 더 하면 너 잡는다. 두고 봐.',
+      '지금 점수는 가릴 수 있어. 따라와 봐.',
+      '여기서 멈출 내가 아니지. 다음 라운드 가자.'
+    ]
+  };
+  let key;
+  if (myRank === 1) key = 'top';
+  else if (myRank <= 3) key = 'high';
+  else if (myRank <= Math.ceil(total / 2)) key = 'mid';
+  else key = 'low';
+  const pool = pools[key];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+async function buildTauntCanvas() {
+  if ((me.bestScore || 0) <= 0) {
+    showToast('먼저 한 판 뛰어서 점수를 올려주세요!');
+    return null;
+  }
+  const rows = getAllRankingRows();
+  const myIdx = rows.findIndex((r) => r.me);
+  if (myIdx < 0) {
+    showToast('랭킹에서 내 점수를 찾지 못했어요.');
+    return null;
+  }
+  const start = Math.max(0, myIdx - 2);
+  const end = Math.min(rows.length, myIdx + 3);
+  const slice = rows.slice(start, end);
+  const myRank = myIdx + 1;
+
+  tauntListEl.innerHTML = '';
+  slice.forEach((row, i) => {
+    const actualRank = start + i + 1;
+    const li = document.createElement('li');
+    if (row.me) li.classList.add('me');
+    const rank = document.createElement('span');
+    rank.className = 'rank';
+    rank.textContent = `${actualRank}위`;
+    const who = document.createElement('span');
+    who.className = 'who';
+    who.textContent = `${row.emoji} ${row.name}${row.me ? ' (나)' : ''}`;
+    const score = document.createElement('span');
+    score.className = 'score';
+    score.textContent = `${row.score}점`;
+    li.append(rank, who, score);
+    tauntListEl.appendChild(li);
+  });
+  tauntSubtitle.textContent = `전체 ${rows.length}명 중 ${myRank}위 · ${formatKoreanDate(new Date())}`;
+  tauntMsgEl.textContent = pickTauntMessage(myRank, rows.length);
+
+  // Give the browser a tick to lay out the offscreen card before capturing.
+  await new Promise((r) => setTimeout(r, 30));
+  if (typeof window.html2canvas !== 'function') throw new Error('html2canvas not loaded');
+  return await window.html2canvas(tauntCapture, { backgroundColor: null, scale: 2, useCORS: true });
+}
+
+tauntBtn.addEventListener('click', async () => {
+  try {
+    const canvas = await buildTauntCanvas();
+    if (!canvas) return;
+    const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+    const blob = await new Promise((r) => canvas.toBlob(r, 'image/png'));
+    const file = new File([blob], 'taunt.png', { type: 'image/png' });
+    if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ title: '복도달리기 도발장', text: '내 랭킹 한번 봐!', files: [file] });
+        return;
+      } catch { /* user cancelled → fall through */ }
+    }
+    // Desktop fallback: download + clipboard copy
+    const link = document.createElement('a');
+    link.download = `복도달리기_도발장_${new Date().toISOString().slice(0, 10)}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    try {
+      if (navigator.clipboard && window.ClipboardItem) {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        showToast('도발장을 저장하고 클립보드에도 복사했어요!');
+        return;
+      }
+    } catch { /* clipboard not permitted */ }
+    showToast('도발장이 저장됐어요!');
+  } catch (err) {
+    console.error(err);
+    showToast('도발장 생성에 실패했어요');
+  }
 });
 
 // ---------- fortune (오늘의 교사 운세) ----------
@@ -657,7 +811,7 @@ canvas.addEventListener('mousemove', (e) => {
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
-    if (!helpModal.hidden) helpModal.hidden = true;
+    if (!helpModal.hidden) closeHelpModal();
     if (!emojiModal.hidden) emojiModal.hidden = true;
     if (!gameModal.hidden) closeGame();
     if (!fortuneFormModal.hidden) fortuneFormModal.hidden = true;
