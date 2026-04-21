@@ -218,15 +218,15 @@ export function createSleepersGame(container, { onTick, onGameOver } = {}) {
     const block = blockFrom(anchor);
     const targets = block.filter((idx) => students[idx].state !== 'awake');
     if (targets.length === 0) {
-      // All four awake → -4 and fever immediately ends (출석부 취소).
-      score -= 4;
+      // All four awake → -1 and fever immediately ends (출석부 취소).
+      score -= 1;
       feverUntil = 0;
       for (const idx of block) {
         students[idx].angryUntil = now + 900;
         renderCell(idx);
         setTimeout(() => renderCell(idx), 950);
       }
-      flashCell(anchor, '-4 전원 깨있음!', 'bad');
+      flashCell(anchor, '-1 전원 깨있음!', 'bad');
       clearHover();
       updateHud(now);
       return;

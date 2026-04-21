@@ -166,39 +166,13 @@ export function createScene(canvas, theme) {
   }
 
   function drawGround(t) {
-    // Base sky always drawn so any transparent SVG area has a fallback.
+    // Base sky always drawn so any transparent image area has a fallback.
     ctx.fillStyle = t.sky;
     ctx.fillRect(0, 0, width, height);
 
-    if (bgImgReady) {
-      drawBackgroundImage();
-    } else {
-      // default green rhombus ground
-      ctx.fillStyle = t.ground;
-      rhombusPath(rx + 80, ry + 80);
-      ctx.fill();
-    }
-
-    // Dark outline underneath so the track is visible on any background.
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = 'rgba(60,40,20,0.85)';
-    ctx.lineWidth = 42;
-    rhombusPath(rx, ry);
-    ctx.stroke();
-
-    // Main running track surface.
-    ctx.strokeStyle = t.track;
-    ctx.lineWidth = 36;
-    rhombusPath(rx, ry);
-    ctx.stroke();
-
-    // Dashed lane lines on top.
-    ctx.strokeStyle = 'rgba(255,255,255,0.75)';
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([6, 6]);
-    rhombusPath(rx, ry);
-    ctx.stroke();
-    ctx.setLineDash([]);
+    // Only the uploaded background (if any). No default rhombus ground, no
+    // drawn running track — the track shape lives only in motion logic now.
+    if (bgImgReady) drawBackgroundImage();
   }
 
   function drawSchoolImage() {
@@ -221,81 +195,9 @@ export function createScene(canvas, theme) {
     ctx.drawImage(schoolImg, x, y, w, h);
   }
 
-  function drawSchool(t) {
-    if (schoolImgReady) { drawSchoolImage(); return; }
-    const w = Math.min(width, height) * 0.28;
-    const h = w * 0.55;
-    const x = cx - w / 2;
-    const y = cy - h / 2 + 10;
-
-    // shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.1)';
-    ctx.beginPath();
-    ctx.ellipse(cx, y + h + 6, w / 2, 8, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    // body
-    ctx.fillStyle = t.schoolWall;
-    ctx.strokeStyle = '#333';
-    ctx.lineWidth = 2;
-    ctx.fillRect(x, y, w, h);
-    ctx.strokeRect(x, y, w, h);
-
-    // roof
-    ctx.fillStyle = t.schoolRoof;
-    ctx.beginPath();
-    ctx.moveTo(x - 8, y);
-    ctx.lineTo(cx, y - h * 0.45);
-    ctx.lineTo(x + w + 8, y);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // windows
-    const cols = 4, rows = 2;
-    const pad = w * 0.08;
-    const winW = (w - pad * (cols + 1)) / cols;
-    const winH = (h - pad * (rows + 2)) / rows;
-    ctx.fillStyle = '#b8d6ff';
-    ctx.strokeStyle = '#333';
-    ctx.lineWidth = 1.5;
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const wx = x + pad + c * (winW + pad);
-        const wy = y + pad + r * (winH + pad);
-        ctx.fillRect(wx, wy, winW, winH);
-        ctx.strokeRect(wx, wy, winW, winH);
-        // cross
-        ctx.beginPath();
-        ctx.moveTo(wx + winW / 2, wy);
-        ctx.lineTo(wx + winW / 2, wy + winH);
-        ctx.moveTo(wx, wy + winH / 2);
-        ctx.lineTo(wx + winW, wy + winH / 2);
-        ctx.stroke();
-      }
-    }
-
-    // door
-    const dw = w * 0.14;
-    const dh = h * 0.38;
-    ctx.fillStyle = '#8b5a2b';
-    ctx.fillRect(cx - dw / 2, y + h - dh, dw, dh);
-    ctx.strokeRect(cx - dw / 2, y + h - dh, dw, dh);
-
-    // flag
-    ctx.strokeStyle = '#333';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(cx, y - h * 0.45);
-    ctx.lineTo(cx, y - h * 0.75);
-    ctx.stroke();
-    ctx.fillStyle = '#ff5a5a';
-    ctx.beginPath();
-    ctx.moveTo(cx, y - h * 0.72);
-    ctx.lineTo(cx + 22, y - h * 0.66);
-    ctx.lineTo(cx, y - h * 0.58);
-    ctx.closePath();
-    ctx.fill();
+  function drawSchool() {
+    // Only the uploaded image (if any) — no default school illustration.
+    if (schoolImgReady) drawSchoolImage();
   }
 
   function drawDecor(t, now) {
