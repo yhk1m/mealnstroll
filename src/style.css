@@ -410,19 +410,19 @@ html, body {
   .fortune-hanja { font-size: 14px; }
 }
 
-/* ---------- sleepers (학생 깨우기) ---------- */
+/* ---------- sleepers (학생 깨우기) — same modal shell as 복도달리기 ---------- */
 .sleepers-card {
-  max-width: min(96vw, 640px);
+  max-width: min(96vw, 820px);
   max-height: 96vh;
   display: flex;
   flex-direction: column;
   padding: 16px 18px 14px;
   overflow: hidden;
 }
-.sleepers-card h2#sleepers-title { margin-bottom: 4px; font-size: 17px; }
+.sleepers-card h2#sleepers-title { margin-bottom: 6px; font-size: 17px; }
 .sleepers-stage {
-  position: relative;
-  flex: 0 0 auto;
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -430,8 +430,12 @@ html, body {
   background: #faf5e6;
   border: 2px solid var(--ink);
   border-radius: 12px;
+  overflow: hidden;
+  position: relative;
 }
 .sleepers-container {
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -440,77 +444,141 @@ html, body {
 .sleepers-hud {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   flex-wrap: wrap;
   font-size: 13px;
   color: var(--ink);
   padding: 0 2px;
+  position: relative;
 }
 .sleepers-hud .sl-hud-item b { font-size: 15px; color: var(--ink); }
-.sleepers-hud .sl-attendance {
+.sleepers-hud .sl-fever {
   margin-left: auto;
   padding: 4px 10px;
-  border: 2px solid var(--ink);
-  background: #fff;
-  color: var(--ink);
+  border: 2px solid #c97c00;
+  background: #ffd96b;
   border-radius: 8px;
-  font-family: inherit;
-  font-weight: 600;
-  cursor: pointer;
+  font-weight: 700;
   font-size: 13px;
-  box-shadow: 0 2px 0 var(--ink);
-  transition: transform 0.08s, box-shadow 0.08s, background 0.12s;
+  color: #5a3800;
+  transition: opacity 0.15s, transform 0.15s;
+  box-shadow: 0 2px 0 #8a5500;
 }
-.sleepers-hud .sl-attendance:disabled {
-  opacity: 0.45;
-  cursor: default;
-  box-shadow: none;
+.sleepers-hud .sl-fever[data-active="false"] {
+  opacity: 0.3;
+  transform: scale(0.94);
 }
-.sleepers-hud .sl-attendance.active {
-  background: #ffe066;
-  box-shadow: 0 0 0 3px rgba(255,200,80,0.5);
+.sleepers-hud .sl-fever[data-active="true"] {
+  animation: slFeverGlow 1s ease-in-out infinite;
 }
-.sleepers-hud .sl-attendance:not(:disabled):hover { filter: brightness(1.03); }
+@keyframes slFeverGlow {
+  0%, 100% { box-shadow: 0 2px 0 #8a5500, 0 0 0 2px rgba(255, 184, 0, 0.6); }
+  50%      { box-shadow: 0 2px 0 #8a5500, 0 0 0 8px rgba(255, 184, 0, 0.0); }
+}
+.sleepers-hud .sl-fever-val { color: #3a2500; }
 
 .sleepers-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  align-self: center;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   aspect-ratio: 1 / 1;
-  max-height: 56vh;
-  align-self: center;
-  width: 100%;
-  max-width: 440px;
+  width: auto;
+  max-width: 100%;
+  max-height: 100%;
 }
+
+/* --- student seat + desk (desk style for each cell) --- */
 .student {
   aspect-ratio: 1 / 1;
-  border: 2px solid var(--ink);
-  border-radius: 12px;
-  background: #fff8d9;
-  font-size: clamp(28px, 4.2vw, 42px);
   padding: 0;
+  border: none;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
   cursor: pointer;
   position: relative;
   font-family: inherit;
-  transition: transform 0.08s, background 0.15s, box-shadow 0.12s;
-  line-height: 1;
+  transition: transform 0.08s;
+}
+.student:hover { transform: translateY(-3px); }
+.student .seat {
+  flex: 1 1 auto;
+  min-height: 0;
+  border: 2px solid var(--ink);
+  border-bottom: none;
+  border-radius: 14px 14px 0 0;
+  background: #fff8d9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, box-shadow 0.12s;
+  position: relative;
+  overflow: hidden;
+}
+.student.dozing .seat { background: #d9e9ff; }
+.student.asleep .seat { background: #b8c9e8; }
+.student.angry  .seat { background: #ffd3d3; animation: slShake 0.32s; }
+@keyframes slShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
 }
 .student .face {
-  display: inline-block;
+  font-size: clamp(22px, 3.4vw, 34px);
+  line-height: 1;
   pointer-events: none;
+  user-select: none;
 }
-.student:hover { transform: scale(1.05); }
-.student.awake  { background: #fff8d9; }
-.student.dozing { background: #d9e9ff; }
-.student.asleep { background: #c1d0ee; }
-.student.block-hover { box-shadow: inset 0 0 0 4px #ff7ec8; }
-.sleepers-container.attendance-mode .student { cursor: crosshair; }
+.student .desk {
+  flex: 0 0 30%;
+  position: relative;
+  background: linear-gradient(to bottom, #b8824a 0%, #8e5c2e 55%, #6d4420 100%);
+  border: 2px solid #4a2f18;
+  border-radius: 0 0 6px 6px;
+}
+.student .desk::before {
+  /* 책상 상판 하이라이트 */
+  content: '';
+  position: absolute;
+  inset: 2px 6px auto 6px;
+  height: 3px;
+  background: rgba(255, 220, 170, 0.5);
+  border-radius: 2px;
+}
+.student .desk::after {
+  /* 책상 아래 그림자·서랍 선 */
+  content: '';
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: 22%;
+  height: 2px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 2px;
+}
+.student.block-hover .seat { box-shadow: inset 0 0 0 4px #ff7ec8; }
+
+/* Fever-time effects */
+.sleepers-container.fever .student .seat {
+  box-shadow: inset 0 0 0 2px rgba(255, 150, 0, 0.7);
+}
+.sleepers-container.fever .sleepers-grid {
+  animation: slFeverPulse 1s ease-in-out infinite;
+}
+@keyframes slFeverPulse {
+  0%, 100% { filter: brightness(1); }
+  50%      { filter: brightness(1.12) saturate(1.1); }
+}
+.sleepers-container.fever .student { cursor: crosshair; }
 
 .sl-bubble {
   position: absolute;
-  top: 50%;
+  top: 22%;
   left: 50%;
-  transform: translate(-50%, -120%);
+  transform: translate(-50%, -40%);
   background: #222;
   color: #fff;
   font-size: 11px;
@@ -524,13 +592,13 @@ html, body {
 .sl-bubble.good { background: #2ca74b; }
 .sl-bubble.bad  { background: #d73a49; }
 @keyframes slBubbleRise {
-  from { opacity: 1; transform: translate(-50%, -120%); }
-  to   { opacity: 0; transform: translate(-50%, -220%); }
+  from { opacity: 1; transform: translate(-50%, -40%); }
+  to   { opacity: 0; transform: translate(-50%, -160%); }
 }
 .sl-time-bonus {
   position: absolute;
-  top: 0;
-  right: 8px;
+  top: -6px;
+  right: 10px;
   background: #2b8a3e;
   color: #fff;
   padding: 4px 10px;
@@ -539,6 +607,7 @@ html, body {
   font-weight: 700;
   animation: slBonusRise 1.2s ease-out forwards;
   pointer-events: none;
+  z-index: 3;
 }
 @keyframes slBonusRise {
   from { opacity: 1; transform: translateY(0); }
@@ -547,7 +616,7 @@ html, body {
 .sleepers-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(0,0,0,0.55);
+  background: rgba(0, 0, 0, 0.55);
   color: #fff;
   display: flex;
   align-items: center;
