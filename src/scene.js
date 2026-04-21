@@ -99,20 +99,27 @@ export function createScene(canvas, theme) {
   let rx = 0, ry = 0; // orbit radii
   const decorSeed = Math.random();
 
-  // Optional SVG school image. Drop a file at /public/school.svg to use it.
+  // Optional school image. Drop any of these into /public/ to use it:
+  //   school.svg, school.png, school.jpg, school.jpeg, school.webp
   const schoolImg = new Image();
   let schoolImgReady = false;
-  schoolImg.onload = () => { schoolImgReady = true; };
-  schoolImg.onerror = () => { schoolImgReady = false; };
-  schoolImg.src = '/school.svg';
+  tryImage(schoolImg, 'school', ['svg', 'png', 'jpg', 'jpeg', 'webp'], () => { schoolImgReady = true; });
 
-  // Optional full-canvas background. Drop a file at /public/background.svg.
-  // When present, it replaces the green rhombus ground; track still drawn on top.
+  // Optional full-canvas background. Drop any of these into /public/:
+  //   background.svg, background.png, background.jpg, background.jpeg, background.webp
   const bgImg = new Image();
   let bgImgReady = false;
-  bgImg.onload = () => { bgImgReady = true; };
-  bgImg.onerror = () => { bgImgReady = false; };
-  bgImg.src = '/background.svg';
+  tryImage(bgImg, 'background', ['svg', 'png', 'jpg', 'jpeg', 'webp'], () => { bgImgReady = true; });
+
+  function tryImage(img, name, exts, onReady) {
+    let i = 0;
+    img.onload = () => onReady?.();
+    img.onerror = () => {
+      i += 1;
+      if (i < exts.length) img.src = `/${name}.${exts[i]}`;
+    };
+    img.src = `/${name}.${exts[0]}`;
+  }
 
   function resize() {
     const rect = canvas.getBoundingClientRect();
