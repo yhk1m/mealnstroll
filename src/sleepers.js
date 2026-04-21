@@ -159,12 +159,22 @@ export function createSleepersGame(container, { onTick, onGameOver } = {}) {
     highlightBlock(anchorForHover(i));
   }
 
+  // Diminishing time reward so runs can actually end.
+  function bonusForTier(tier) {
+    if (tier === 1) return 10;
+    if (tier === 2) return 7;
+    if (tier === 3) return 5;
+    if (tier === 4) return 3;
+    return 2;
+  }
+
   function checkTimeBonus() {
     const tier = Math.floor(score / 10);
     if (tier > 0 && !bonusTiersUsed.has(tier)) {
       bonusTiersUsed.add(tier);
-      timeLeft += 10;
-      flashHud('+10초!');
+      const bonus = bonusForTier(tier);
+      timeLeft += bonus;
+      flashHud(`+${bonus}초!`);
     }
   }
 
@@ -252,7 +262,16 @@ export function createSleepersGame(container, { onTick, onGameOver } = {}) {
     if (timeLeft <= 0) {
       timeLeft = 0;
       updateHud(ts);
-      gameOver();
+      gameOver('time');
+      return;
+    }
+
+    // Wipeout: no one is awake anymore → instant end.
+    let awake = 0;
+    for (const s of students) if (s.state === 'awake') awake++;
+    if (awake === 0) {
+      updateHud(ts);
+      gameOver('wipeout');
       return;
     }
 
@@ -326,14 +345,17 @@ export function createSleepersGame(container, { onTick, onGameOver } = {}) {
     }
   }
 
-  function gameOver() {
+  function gameOver(reason = 'time') {
     running = false;
     feverUntil = 0;
     clearHover();
     if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
     const final = Math.max(0, score);
+    const msg = reason === 'wipeout'
+      ? `💤 전멸! 모두 잠들어버렸어요 · ${final}점 · 다시 하려면 클릭`
+      : `종례! ${final}점 · 다시 하려면 클릭`;
     overlay.style.display = '';
-    overlay.querySelector('.sl-overlay-text').textContent = `종례! ${final}점 · 다시 하려면 클릭`;
+    overlay.querySelector('.sl-overlay-text').textContent = msg;
     updateHud(performance.now());
     onGameOver?.(final);
   }
