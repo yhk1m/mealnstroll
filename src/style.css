@@ -425,7 +425,9 @@ html, body {
   border-radius: 10px;
   overflow: hidden;
   background: #f6f1e4;
-  aspect-ratio: 40 / 10;
+  /* Fixed height (roughly previous 32:10 rendering at 1920w) so further
+     max-width changes only extend horizontally, never shorten the track. */
+  height: min(60vh, 580px);
   width: 100%;
 }
 #dino-canvas {
