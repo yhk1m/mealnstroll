@@ -350,6 +350,20 @@ function openGame() {
   } else {
     game.reset();
   }
+  // The modal pops in with a 0.18s scale animation and was display:none
+  // before, so ResizeObserver may not fire and the canvas rect can read 0
+  // for a few frames. Poll until it has a real size, then redraw.
+  let attempts = 0;
+  const ensureSize = () => {
+    if (!game || gameModal.hidden) return;
+    const rect = gameCanvas.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      game.redraw();
+      return;
+    }
+    if (++attempts < 30) requestAnimationFrame(ensureSize);
+  };
+  requestAnimationFrame(ensureSize);
   // focus canvas so keyboard works
   setTimeout(() => gameCanvas.focus?.(), 0);
 }
@@ -575,7 +589,10 @@ async function buildTauntCanvas(opts) {
   tauntSubtitle.textContent = `전체 ${rows.length}명 중 ${myRank}위 · ${formatKoreanDate(new Date())}`;
   tauntMsgEl.textContent = pickTauntMessage(myRank, rows.length);
 
+  // Wait for layout + web fonts (Jua) before capture, otherwise html2canvas
+  // snapshots with a fallback serif and the card looks ugly.
   await new Promise((r) => setTimeout(r, 30));
+  if (document.fonts?.ready) { try { await document.fonts.ready; } catch {} }
   if (typeof window.html2canvas !== 'function') throw new Error('html2canvas not loaded');
   return await window.html2canvas(tauntCapture, { backgroundColor: null, scale: 2, useCORS: true });
 }
@@ -609,9 +626,16 @@ async function handleTauntClick(opts) {
     console.error(err);
     showToast('도발장 생성에 실패했어요');
   } finally {
-    // html2canvas can blank the dino-canvas internal bitmap via its DOM clone.
-    // If the game modal is still visible, force a redraw so the frame returns.
-    if (game && !gameModal.hidden) game.redraw();
+    // html2canvas can blank the dino-canvas internal bitmap via its DOM clone
+    // cleanup, which runs asynchronously AFTER the promise resolves. A single
+    // redraw in the finally sometimes happens before that cleanup lands, so
+    // redraw on the next frame and again after a short delay.
+    if (game && !gameModal.hidden) {
+      const redrawGame = () => { if (game && !gameModal.hidden) game.redraw(); };
+      requestAnimationFrame(redrawGame);
+      setTimeout(redrawGame, 120);
+      setTimeout(redrawGame, 400);
+    }
   }
 }
 

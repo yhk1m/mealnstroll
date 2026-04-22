@@ -54,6 +54,10 @@ export function createGame(canvas, { onGameOver, onTick } = {}) {
 
   function resize() {
     const rect = canvas.getBoundingClientRect();
+    // Don't overwrite canvas.width/height with 0 when the modal is hidden or
+    // the layout hasn't settled — setting canvas HTML attrs to 0 poisons the
+    // intrinsic size and breaks `height: 100%` fallbacks on later reopens.
+    if (rect.width <= 0 || rect.height <= 0) return;
     W = rect.width;
     H = rect.height;
     canvas.width = Math.floor(W * dpr);

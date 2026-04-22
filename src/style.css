@@ -663,10 +663,15 @@ html, body {
   flex: 1 1 auto;
   min-height: 220px;
   width: 100%;
+  /* Flex container so the canvas gets a definite height via stretch,
+     rather than falling back to intrinsic (HTML height attr) when the
+     parent's height is only min-height. */
+  display: flex;
 }
 #dino-canvas {
-  width: 100%;
-  height: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
   display: block;
   touch-action: manipulation;
   cursor: pointer;
@@ -807,7 +812,8 @@ html, body {
 .taunt-list li.me {
   background: #fff1a0;
   font-weight: 700;
-  box-shadow: 0 0 0 2px var(--accent) inset;
+  border: 2px solid var(--accent);
+  padding: 5px 4px;
 }
 .taunt-list .rank {
   min-width: 40px;
@@ -1687,7 +1693,18 @@ html, body {
   .copyright-inline {
     font-size: 11px;
     padding: 3px 6px;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    line-height: 1.25;
   }
+  .top-bar-left .copyright-inline {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+  }
+  .copyright-sep { display: none; }
+  .copyright-link { display: block; }
 }
 
 @media (max-width: 640px) and (orientation: landscape) {
