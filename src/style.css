@@ -1307,6 +1307,14 @@ html, body {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-wrap: wrap;
+}
+
+.online-row b { color: var(--ink); }
+
+.online-row .online-sep {
+  color: var(--sidebar-border);
+  margin: 0 -2px;
 }
 
 .dot {

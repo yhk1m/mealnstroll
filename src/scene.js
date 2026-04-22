@@ -41,6 +41,14 @@ export function effectiveAngle(avatar, now) {
   return avatar.angle0 + avatar.speed * integratedMultiplier(tenureSec);
 }
 
+// Number of full laps an avatar has walked since joining.
+export function avatarLaps(avatar, now) {
+  if (!avatar || !avatar.startedAt || !avatar.speed) return 0;
+  const tenureSec = Math.max(0, (now - avatar.startedAt) / 1000);
+  const swept = Math.abs(avatar.speed) * integratedMultiplier(tenureSec);
+  return Math.floor(swept / (Math.PI * 2));
+}
+
 // Given current time, find the next time the avatar crosses GATE_ANGLE in its
 // current direction. Accounts for the stepped-speed schedule.
 export function nextGateCrossingTime(avatar, now) {

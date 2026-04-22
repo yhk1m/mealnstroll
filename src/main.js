@@ -1,5 +1,5 @@
 // © 2026 김용현
-import { createScene, GATE_ANGLE } from './scene.js';
+import { createScene, GATE_ANGLE, avatarLaps } from './scene.js';
 import { createChatUI } from './chat.js';
 import { createRealtime } from './realtime.js';
 import { currentTheme, applyThemeToCss } from './theme.js';
@@ -73,6 +73,35 @@ const nameInput = document.getElementById('me-name');
 const avatarDot = document.getElementById('me-avatar');
 const refreshBtn = document.getElementById('me-refresh');
 const onlineCount = document.getElementById('online-count');
+const lapTotalEl = document.getElementById('lap-total');
+const seenTotalEl = document.getElementById('seen-total');
+
+function renderLapTotal() {
+  lapTotalEl.textContent = avatarLaps(me, Date.now());
+}
+renderLapTotal();
+setInterval(renderLapTotal, 1000);
+
+// Cumulative distinct walkers ever seen by this browser.
+const SEEN_IDS_KEY = 'mealnstroll.seen.ids';
+const seenIds = new Set();
+try {
+  const raw = localStorage.getItem(SEEN_IDS_KEY);
+  if (raw) for (const id of JSON.parse(raw)) seenIds.add(id);
+} catch {}
+seenIds.add(selfId);
+
+function recordSeen(ids) {
+  let changed = false;
+  for (const id of ids) {
+    if (id && !seenIds.has(id)) { seenIds.add(id); changed = true; }
+  }
+  if (changed) {
+    try { localStorage.setItem(SEEN_IDS_KEY, JSON.stringify([...seenIds])); } catch {}
+  }
+  seenTotalEl.textContent = seenIds.size;
+}
+recordSeen([]);
 
 nameInput.value = profile.name;
 renderMeAvatar();
@@ -138,6 +167,7 @@ const rt = createRealtime({
       });
     }
     onlineCount.textContent = nextIds.size;
+    recordSeen(list.map(p => p.id));
     if (gameOpen) renderRanking();
     if (sleepersOpen) renderSleepersRanking();
   },
