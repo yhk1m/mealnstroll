@@ -34,6 +34,7 @@ html, body {
 #app {
   display: flex;
   height: 100vh;
+  height: 100dvh;
   width: 100%;
   overflow: hidden;
 }
@@ -1619,7 +1620,10 @@ html, body {
 
 @media (max-width: 640px) {
   #app { flex-direction: column; }
-  .main-col { flex: 1 1 55%; }
+  .main-col {
+    flex: 1 1 55%;
+    padding-top: 44px;
+  }
   #sidebar {
     width: 100%;
     min-width: 0;
@@ -1629,6 +1633,14 @@ html, body {
     border-top: 1px solid var(--sidebar-border);
   }
   #scene { flex: 1 1 auto; height: auto; }
+
+  .top-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 30;
+  }
 
   .sidebar-header { padding: 12px; }
   .sidebar-header h1 { font-size: 17px; }
