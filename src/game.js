@@ -364,6 +364,10 @@ export function createGame(canvas, { onGameOver, onTick } = {}) {
     jump,
     setDucking,
     reset,
+    // Re-measure the canvas and redraw the current frame without mutating game
+    // state. Used after html2canvas captures, which can wipe the internal
+    // bitmap via its DOM clone side effects.
+    redraw: () => { resize(); draw(); },
     destroy,
     getScore: () => Math.floor(score),
     getState: () => state

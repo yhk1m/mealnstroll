@@ -578,6 +578,10 @@ async function handleTauntClick(opts) {
   } catch (err) {
     console.error(err);
     showToast('도발장 생성에 실패했어요');
+  } finally {
+    // html2canvas can blank the dino-canvas internal bitmap via its DOM clone.
+    // If the game modal is still visible, force a redraw so the frame returns.
+    if (game && !gameModal.hidden) game.redraw();
   }
 }
 
