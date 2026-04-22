@@ -122,12 +122,12 @@ export function createChatUI({ listEl, formEl, inputEl, onSubmit, getUsers, getM
   function renderPopup() {
     if (!mentionState) { closePopup(); return; }
     popup.innerHTML = '';
-    let selectedEl = null;
     mentionState.items.forEach((u, i) => {
       const btn = document.createElement('button');
       btn.type = 'button';
-      const isSel = i === mentionState.selectedIdx;
-      btn.className = 'mention-item' + (isSel ? ' selected' : '');
+      btn.className = 'mention-item';
+      btn.dataset.idx = String(i);
+      btn.tabIndex = -1;
       const emo = document.createElement('span');
       emo.className = 'mention-emoji';
       emo.textContent = u.emoji || '🙂';
@@ -135,20 +135,22 @@ export function createChatUI({ listEl, formEl, inputEl, onSubmit, getUsers, getM
       nm.className = 'mention-name';
       nm.textContent = u.name;
       btn.append(emo, nm);
-      // mousedown (not click) so we fire before the input's blur closes the popup
-      btn.addEventListener('mousedown', (e) => { e.preventDefault(); selectMention(i); });
-      // Move highlight when hovering so keyboard + mouse stay in sync
-      btn.addEventListener('mousemove', () => {
-        if (mentionState && mentionState.selectedIdx !== i) {
-          mentionState.selectedIdx = i;
-          renderPopup();
-        }
-      });
       popup.appendChild(btn);
-      if (isSel) selectedEl = btn;
     });
     popup.hidden = false;
-    if (selectedEl) selectedEl.scrollIntoView({ block: 'nearest' });
+    updateSelection();
+  }
+
+  // Toggle `.selected` without rebuilding DOM so arrow key navigation is
+  // instant and doesn't fight with hover/render timing.
+  function updateSelection() {
+    if (!mentionState) return;
+    const buttons = popup.querySelectorAll('.mention-item');
+    buttons.forEach((b, i) => {
+      const sel = i === mentionState.selectedIdx;
+      b.classList.toggle('selected', sel);
+      if (sel) b.scrollIntoView({ block: 'nearest' });
+    });
   }
 
   function updateMention() {
@@ -166,13 +168,17 @@ export function createChatUI({ listEl, formEl, inputEl, onSubmit, getUsers, getM
       : users
     ).slice(0, 8);
     if (matches.length === 0) { closePopup(); return; }
-    const prevIdx = mentionState?.selectedIdx ?? 0;
+    // Keep any existing selection as long as it's still in range; otherwise
+    // start with -1 (no selection) so the default state is plain white.
+    const prevIdx = mentionState?.selectedIdx;
+    const keepIdx = (typeof prevIdx === 'number' && prevIdx >= 0 && prevIdx < matches.length)
+      ? prevIdx : -1;
     mentionState = {
       start: m.start,
       end: m.end,
       query: m.query,
       items: matches,
-      selectedIdx: Math.min(prevIdx, matches.length - 1)
+      selectedIdx: keepIdx
     };
     renderPopup();
   }
@@ -192,6 +198,24 @@ export function createChatUI({ listEl, formEl, inputEl, onSubmit, getUsers, getM
     inputEl.focus();
   }
 
+  // Popup-level event delegation for mouse interaction.
+  popup.addEventListener('mousedown', (e) => {
+    const btn = e.target.closest('.mention-item');
+    if (!btn) return;
+    // mousedown (not click) so we fire before the input's blur closes the popup.
+    e.preventDefault();
+    selectMention(Number(btn.dataset.idx));
+  });
+  popup.addEventListener('mousemove', (e) => {
+    const btn = e.target.closest('.mention-item');
+    if (!btn || !mentionState) return;
+    const idx = Number(btn.dataset.idx);
+    if (!Number.isNaN(idx) && mentionState.selectedIdx !== idx) {
+      mentionState.selectedIdx = idx;
+      updateSelection();
+    }
+  });
+
   inputEl.addEventListener('input', updateMention);
   inputEl.addEventListener('click', updateMention);
   inputEl.addEventListener('keyup', (e) => {
@@ -200,25 +224,26 @@ export function createChatUI({ listEl, formEl, inputEl, onSubmit, getUsers, getM
   inputEl.addEventListener('keydown', (e) => {
     if (popup.hidden || !mentionState) return;
     const len = mentionState.items.length;
-    // Arrows/Escape must work even during Korean IME composition so the user
-    // can navigate the popup while still in a composing state.
+    const cur = mentionState.selectedIdx;
+    // Arrows/Escape must work even during Korean IME composition.
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       e.stopPropagation();
-      mentionState.selectedIdx = (mentionState.selectedIdx + 1) % len;
-      renderPopup();
+      // From "no selection" (-1) start at the first item.
+      mentionState.selectedIdx = cur < 0 ? 0 : (cur + 1) % len;
+      updateSelection();
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       e.stopPropagation();
-      mentionState.selectedIdx = (mentionState.selectedIdx - 1 + len) % len;
-      renderPopup();
+      mentionState.selectedIdx = cur < 0 ? len - 1 : (cur - 1 + len) % len;
+      updateSelection();
     } else if (e.key === 'Escape') {
       e.preventDefault();
       closePopup();
     } else if ((e.key === 'Enter' || e.key === 'Tab') && !e.isComposing && e.keyCode !== 229) {
-      // Skip Enter during IME so Korean composition can finalize first.
+      if (cur < 0) return; // no selection yet → let Enter submit or Tab move on
       e.preventDefault();
-      selectMention(mentionState.selectedIdx);
+      selectMention(cur);
     }
   });
   inputEl.addEventListener('blur', () => {

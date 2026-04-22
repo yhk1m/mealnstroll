@@ -1544,13 +1544,13 @@ html, body {
 
 .mention-item.selected {
   background: var(--accent);
-  color: #fff;
+  color: var(--ink);
   font-weight: 700;
   box-shadow: 0 2px 6px rgba(255, 138, 76, 0.35);
 }
 
 .mention-item.selected .mention-name {
-  color: #fff;
+  color: var(--ink);
 }
 
 .mention-item .mention-emoji {
@@ -1594,7 +1594,7 @@ html, body {
 
 #chat-input:focus { border-color: var(--accent); }
 
-#chat-form button {
+#chat-form > button {
   height: 32px;
   line-height: 1;
   padding: 0 14px;
@@ -1607,7 +1607,7 @@ html, body {
   box-sizing: border-box;
 }
 
-#chat-form button:hover { filter: brightness(1.05); }
+#chat-form > button:hover { filter: brightness(1.05); }
 
 @media (max-width: 640px) {
   #app { flex-direction: column; }
