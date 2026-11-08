@@ -107,17 +107,14 @@ export function createScene(canvas, theme) {
   let rx = 0, ry = 0; // orbit radii
   const decorSeed = Math.random();
 
-  // Unique per page load, so a regular refresh (F5) always picks up the
-  // latest public/ image without needing a hard reload.
-  const CACHE_BUSTER = Date.now();
   function tryImage(img, name, exts, onReady) {
     let i = 0;
     img.onload = () => onReady?.();
     img.onerror = () => {
       i += 1;
-      if (i < exts.length) img.src = `/${name}.${exts[i]}?v=${CACHE_BUSTER}`;
+      if (i < exts.length) img.src = `/${name}.${exts[i]}`;
     };
-    img.src = `/${name}.${exts[0]}?v=${CACHE_BUSTER}`;
+    img.src = `/${name}.${exts[0]}`;
   }
 
   // Optional school image. Drop any of these into /public/ to use it:
@@ -127,10 +124,10 @@ export function createScene(canvas, theme) {
   tryImage(schoolImg, 'school', ['svg', 'png', 'jpg', 'jpeg', 'webp'], () => { schoolImgReady = true; });
 
   // Optional full-canvas background. Drop any of these into /public/:
-  //   background.svg, background.png, background.jpg, background.jpeg, background.webp
+  //   background.webp, background.svg, background.png, background.jpg, background.jpeg
   const bgImg = new Image();
   let bgImgReady = false;
-  tryImage(bgImg, 'background', ['svg', 'png', 'jpg', 'jpeg', 'webp'], () => { bgImgReady = true; });
+  tryImage(bgImg, 'background', ['webp', 'svg', 'png', 'jpg', 'jpeg'], () => { bgImgReady = true; });
 
   function resize() {
     const rect = canvas.getBoundingClientRect();

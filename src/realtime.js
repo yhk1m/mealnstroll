@@ -10,7 +10,6 @@ export function createRealtime({ selfId, initialState, onSync, onChat, onSystem,
       updateSelf() {},
       sendChat(text) { onChat?.({ id: selfId, text, at: Date.now(), self: true }); },
       sendNotice() {},
-      clearNotice() {},
       requestNotice() {},
       leave() {}
     };
@@ -82,14 +81,10 @@ export function createRealtime({ selfId, initialState, onSync, onChat, onSystem,
       channel.send({ type: 'broadcast', event: 'chat', payload });
       onChat?.({ ...payload, self: true });
     },
-    sendNotice(text, expiresAt = null) {
-      const payload = { text, at: Date.now(), by: currentSelf.name || '관리자', expiresAt };
-      channel.send({ type: 'broadcast', event: 'notice', payload });
-      onNotice?.(payload);
-    },
-    clearNotice() {
-      channel.send({ type: 'broadcast', event: 'notice', payload: null });
-      onNotice?.(null);
+    // envelope: { body, sig } from /api/notice-sign, for a new notice or a clear.
+    sendNotice(envelope) {
+      channel.send({ type: 'broadcast', event: 'notice', payload: envelope });
+      onNotice?.(envelope);
     },
     requestNotice() {
       channel.send({ type: 'broadcast', event: 'notice-request', payload: { id: selfId } });

@@ -15,9 +15,9 @@ import {
   renderStars
 } from './fortune.js';
 import { getLocation, fetchWeather, decorFromWeather } from './weather.js';
+import { createNoticeVerifier, callNoticeApi } from './notice-auth.js';
 
-const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || 'admin';
-const ADMIN_AUTH_KEY = 'mealnstroll.admin.authed';
+const NOTICE_STORE_KEY = 'mealnstroll.notice.signed';
 
 // Detect admin mode from URL: /admin path, ?admin, or #admin
 function detectAdminMode() {
@@ -28,22 +28,23 @@ function detectAdminMode() {
 }
 
 let isAdmin = false;
+let adminPassword = null; // memory only: asked again after a refresh
 let currentNotice = null;
+let currentEnvelope = null; // signed form of currentNotice, for rebroadcasting
+const acceptNotice = createNoticeVerifier(import.meta.env.VITE_NOTICE_PUBLIC_KEY);
 
-function tryEnterAdmin() {
+async function tryEnterAdmin() {
   if (!detectAdminMode()) return;
-  const already = sessionStorage.getItem(ADMIN_AUTH_KEY) === '1';
-  if (already) { isAdmin = true; return; }
   const input = window.prompt('관리자 비밀번호');
   if (input === null) return; // cancelled
-  if (input === ADMIN_PASSWORD) {
+  try {
+    await callNoticeApi({ password: input, action: 'login' });
+    adminPassword = input;
     isAdmin = true;
-    sessionStorage.setItem(ADMIN_AUTH_KEY, '1');
-  } else {
-    alert('비밀번호가 틀렸습니다.');
+  } catch (err) {
+    alert(err.message);
   }
 }
-tryEnterAdmin();
 
 // ---------- state ----------
 const selfId = (() => {
@@ -186,18 +187,20 @@ const rt = createRealtime({
     if (gameOpen || sleepersOpen) return;
     chat.append({ system: true, text });
   },
-  onNotice: (payload) => {
-    currentNotice = payload;
-    renderNotice(payload);
-    if (isAdmin && payload) {
-      localStorage.setItem('mealnstroll.notice', JSON.stringify(payload));
-    } else if (isAdmin && !payload) {
-      localStorage.removeItem('mealnstroll.notice');
+  onNotice: async (envelope) => {
+    const body = await acceptNotice(envelope);
+    if (!body) return; // forged, malformed or stale
+    currentNotice = body.clear ? null : body;
+    currentEnvelope = body.clear ? null : envelope;
+    renderNotice(currentNotice);
+    if (isAdmin) {
+      if (currentEnvelope) localStorage.setItem(NOTICE_STORE_KEY, JSON.stringify(currentEnvelope));
+      else localStorage.removeItem(NOTICE_STORE_KEY);
     }
   },
   onNoticeRequest: () => {
     // Only admin tabs rebroadcast the current notice for newly joined clients.
-    if (isAdmin && currentNotice) rt.sendNotice(currentNotice.text);
+    if (isAdmin && currentEnvelope) rt.sendNotice(currentEnvelope);
   },
   // No exit animation: a user who closes the tab disappears immediately
   // (presence 'leave' + next onSync removes them from `others`).
@@ -1072,6 +1075,7 @@ function renderNotice(payload) {
   if (payload.expiresAt && payload.expiresAt <= Date.now()) {
     noticeBanner.hidden = true;
     currentNotice = null;
+    currentEnvelope = null;
     return;
   }
   noticeTextEl.innerHTML = '';
@@ -1084,8 +1088,9 @@ function renderNotice(payload) {
     const remaining = payload.expiresAt - Date.now();
     noticeExpiryTimer = setTimeout(() => {
       currentNotice = null;
+      currentEnvelope = null;
       renderNotice(null);
-      if (isAdmin) localStorage.removeItem('mealnstroll.notice');
+      if (isAdmin) localStorage.removeItem(NOTICE_STORE_KEY);
     }, Math.max(0, remaining));
   }
 }
@@ -1116,7 +1121,9 @@ function linkifyNoticeInto(el, text) {
 setTimeout(() => rt.requestNotice(), 800);
 
 // ---------- admin panel ----------
-if (isAdmin) {
+tryEnterAdmin().then(() => { if (isAdmin) initAdminPanel(); });
+
+function initAdminPanel() {
   const adminPanel = document.getElementById('admin-panel');
   const adminInput = document.getElementById('admin-notice-input');
   const durationSel = document.getElementById('admin-duration');
@@ -1138,33 +1145,43 @@ if (isAdmin) {
     return Date.now() + ms;
   }
 
-  // Restore last notice this admin posted, if still valid
-  const saved = localStorage.getItem('mealnstroll.notice');
+  // Restore last notice this admin posted. Rebroadcasting goes through the same
+  // path as any received notice, so a stale or invalid backup is simply ignored.
+  localStorage.removeItem('mealnstroll.notice'); // pre-signing backup format
+  const saved = localStorage.getItem(NOTICE_STORE_KEY);
   if (saved) {
     try {
-      const parsed = JSON.parse(saved);
-      if (!parsed.expiresAt || parsed.expiresAt > Date.now()) {
-        adminInput.value = parsed.text || '';
-        currentNotice = parsed;
-        renderNotice(parsed);
-        // Rebroadcast so other tabs see the notice immediately on admin refresh
-        setTimeout(() => rt.sendNotice(parsed.text, parsed.expiresAt || null), 500);
+      const envelope = JSON.parse(saved);
+      const { text, expiresAt } = JSON.parse(envelope.body);
+      if (!expiresAt || expiresAt > Date.now()) {
+        adminInput.value = text || '';
+        setTimeout(() => rt.sendNotice(envelope), 500);
       } else {
-        localStorage.removeItem('mealnstroll.notice');
+        localStorage.removeItem(NOTICE_STORE_KEY);
       }
-    } catch {}
+    } catch {
+      localStorage.removeItem(NOTICE_STORE_KEY);
+    }
+  }
+
+  async function publish(payload) {
+    try {
+      rt.sendNotice(await callNoticeApi({ password: adminPassword, ...payload }));
+      return true;
+    } catch (err) {
+      chat.append({ system: true, text: `공지 전송 실패: ${err.message}` });
+      return false;
+    }
   }
 
   postBtn.addEventListener('click', () => {
     const text = adminInput.value.trim();
     if (!text) return;
-    const expiresAt = computeExpiry(durationSel.value);
-    rt.sendNotice(text, expiresAt);
+    publish({ action: 'post', text, expiresAt: computeExpiry(durationSel.value), by: me.name });
   });
 
-  clearBtn.addEventListener('click', () => {
-    adminInput.value = '';
-    rt.clearNotice();
+  clearBtn.addEventListener('click', async () => {
+    if (await publish({ action: 'clear' })) adminInput.value = '';
   });
 
   closeBtn.addEventListener('click', () => {
