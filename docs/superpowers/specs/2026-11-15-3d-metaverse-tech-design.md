@@ -27,12 +27,13 @@
 
 ## 1. 전체 구조
 
-three.js는 npm 패키지로 넣는다(시안의 CDN 방식 대신). 소스는 다음 묶음으로 나눈다. 각 묶음은 다른 묶음의 내부를 모른 채 공개 함수로만 쓴다.
+three.js는 npm 패키지로 넣는다(시안의 CDN 방식 대신). 시안 코드가 0.147 API(`outputEncoding`, `sRGBEncoding`)를 쓰므로 `three@0.147.0`으로 고정하고, 판 올리기는 나중 일로 둔다. 개발 중 입구는 `walk3d.html`이고 2D `index.html`은 교체 때까지 그대로 둔다. 소스는 다음 묶음으로 나눈다. 각 묶음은 다른 묶음의 내부를 모른 채 공개 함수로만 쓴다.
 
 | 묶음 | 하는 일 | 의존 |
 |---|---|---|
 | `src/world/` | 학교 건물(`yangchung-3d/campus-data.js`의 외부 좌표만 복사, OSM 출처 표기), 나무 5종과 관목(가지 생성, 숲과 불규칙 줄 배치), 하늘과 해 위치, 날씨, 계절, 크리스마스 | three |
 | `src/avatar/` | 2.5등신 캐릭터, 교사 복장 8종, 발을 땅에 붙이는 걷기, 먼 거리용 단순 모양 | three |
+| `src/data/` | 시안에서 뽑아낸 학교 자료(`campus.json`)와 코스 좌표(`courses.json`) | 없음 |
 | `src/move/` | 걸을 수 있는 땅 격자, 길 찾기, 코스 4개, `positionAt(motion, t)` | 없음(순수 함수) |
 | `src/net/` | 서버 시각 보정, 방 배정, 접속자 목록, 움직임 주고받기, 공지 채널 | Supabase(여기만) |
 | `src/quality.js` | 화면 속도 측정, 고화질과 가벼운 화면 전환 | 없음 |
@@ -57,14 +58,15 @@ three.js는 npm 패키지로 넣는다(시안의 CDN 방식 대신). 소스는 �
 // 제자리
 { kind: 'idle', at: [x, z], face: rad }
 // 바닥 클릭 이동
-{ kind: 'go', pts: [[x, z], ...], speed: m_per_s, t0 }
+{ kind: 'go', pts: [[x, z], ...], speed: m_per_s, t0, then? }
+// then: 도착하면 코스를 이어 걷는다 { course, offset } (산책 참여 버튼)
 // 산책 참여
-{ kind: 'course', course: 'track'|'around'|'outside'|'inside', speed: m_per_s, t0, offset: m }
+{ kind: 'course', course: 'track'|'campus'|'outside'|'road', speed: m_per_s, t0, offset: m }
 ```
 
 - 좌표는 학교 기준 미터, 소수 첫째 자리까지 반올림해 보낸다.
 - `t0`는 서버 시각 기준 ms다.
-- `positionAt(motion, now)`는 위치와 바라보는 방향을 돌려주는 순수 함수다. `go`는 마지막 지점에 닿으면 그 자리에 선다. `course`는 코스 길이로 나머지 연산을 해 계속 돈다.
+- `positionAt(motion, now)`는 위치와 바라보는 방향을 돌려주는 순수 함수다. `go`는 마지막 지점에 닿으면 그 자리에 서거나, `then`이 있으면 도착 시각을 `t0`로 삼아 코스를 걷는다. `course`는 코스 길이로 나머지 연산을 해 계속 돈다.
 - 걷는 속도는 3단계(0.7, 1, 1.4m/s). 오래 머물기 효과의 속도 증가는 3번 설계에서 다시 정한다.
 
 **바닥 클릭 처리**
