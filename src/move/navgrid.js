@@ -1,7 +1,7 @@
 // © 2026 김용현
 import { inPoly } from './geom.js';
 
-const MAX_PTS = 32;
+const MAX_PTS = 32; // longer simplified paths are refused (null)
 const PAD = 0.5;
 
 function nearEdge(x, z, ring, pad) {
@@ -55,13 +55,29 @@ export function createNavGrid({ bounds, blocked, cell = 1 }) {
     return null;
   }
 
-  function lineOpen(a, b) {
-    const n = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / (cell * 0.25)) || 1;
-    for (let k = 0; k <= n; k++) {
-      const x = a[0] + ((b[0] - a[0]) * k) / n, z = a[1] + ((b[1] - a[1]) * k) / n;
-      if (!walkable(x, z)) return false;
+  // Exact grid traversal (Amanatides-Woo): every touched cell must be open, and a
+  // pass through a corner is rejected when both side cells are blocked.
+  function lineOpen(p, q) {
+    const u0 = (p[0] - bounds.minX) / cell, v0 = (p[1] - bounds.minZ) / cell;
+    const u1 = (q[0] - bounds.minX) / cell, v1 = (q[1] - bounds.minZ) / cell;
+    let ix = Math.floor(u0), iy = Math.floor(v0);
+    const ex = Math.floor(u1), ey = Math.floor(v1);
+    const du = u1 - u0, dv = v1 - v0;
+    const sx = du > 0 ? 1 : -1, sy = dv > 0 ? 1 : -1;
+    const tdx = du ? Math.abs(1 / du) : Infinity, tdy = dv ? Math.abs(1 / dv) : Infinity;
+    let tx = du ? ((du > 0 ? ix + 1 - u0 : u0 - ix) * tdx) : Infinity;
+    let ty = dv ? ((dv > 0 ? iy + 1 - v0 : v0 - iy) * tdy) : Infinity;
+    const EPS = 1e-9;
+    for (let n = Math.abs(ex - ix) + Math.abs(ey - iy) + 2; n > 0; n--) {
+      if (!isOpen(ix, iy)) return false;
+      if (ix === ex && iy === ey) return true;
+      if (Math.abs(tx - ty) < EPS) {
+        if (!isOpen(ix + sx, iy) && !isOpen(ix, iy + sy)) return false;
+        ix += sx; iy += sy; tx += tdx; ty += tdy;
+      } else if (tx < ty) { ix += sx; tx += tdx; }
+      else { iy += sy; ty += tdy; }
     }
-    return true;
+    return false;
   }
 
   function astar(s, g) {
@@ -102,7 +118,6 @@ export function createNavGrid({ bounds, blocked, cell = 1 }) {
       out.push(pts[far]);
       k = far;
     }
-    if (out.length > MAX_PTS) return out.slice(0, MAX_PTS - 1).concat([out[out.length - 1]]);
     return out;
   }
 
@@ -111,9 +126,12 @@ export function createNavGrid({ bounds, blocked, cell = 1 }) {
     if (!s || !g) return null;
     const cells = astar(s, g);
     if (!cells) return null;
-    cells[0] = walkable(from[0], from[1]) ? [from[0], from[1]] : cells[0];
+    if (walkable(from[0], from[1])) cells[0] = [from[0], from[1]];
+    if (walkable(to[0], to[1])) { if (cells.length === 1) cells.push([to[0], to[1]]); else cells[cells.length - 1] = [to[0], to[1]]; }
     const round = (p) => [Math.round(p[0] * 10) / 10, Math.round(p[1] * 10) / 10];
-    return simplify(cells).map(round);
+    const out = simplify(cells);
+    if (out.length > MAX_PTS) return null; // caller treats as no path; never cut through walls
+    return out.map(round);
   }
 
   return { walkable, findPath };
