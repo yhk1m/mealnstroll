@@ -1,1 +1,4 @@
 /* © 2026 김용현 */
+html, body { margin: 0; height: 100%; overflow: hidden; background: #cfe3ee; }
+#c { display: block; width: 100vw; height: 100vh; }
+.err { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; font: 18px 'Gowun Dodum', sans-serif; color: #2b2b2b; background: #f4efe6; text-align: center; }

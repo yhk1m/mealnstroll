@@ -1258,7 +1258,7 @@ export function createWorld({ canvas, reduced = false, onWeather } = {}) {
 
   return {
     renderer, scene, camera, marker, faceLight,
-    heightAt, inBuilding, groundMeshes: () => groundMeshes, blockers: () => blockers,
+    heightAt, inBuilding, ribbonGeo, groundMeshes: () => groundMeshes, blockers: () => blockers,
     setTimeMode(mode) { view.timeMode = mode; syncSky(); applyTime(); },
     setPreview({ wxMode, seasonMode }) { Object.assign(view, { wxMode, seasonMode }); applyTime(); },
     setLive(live) { view.live = live; applyTime(); },
