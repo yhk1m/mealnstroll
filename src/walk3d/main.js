@@ -13,6 +13,7 @@ import { syncServerClock } from '../net/clock.js';
 import { roomFromHash } from '../net/rooms.js';
 import { createSession } from '../net/session.js';
 import { supabase } from '../supabase.js';
+import { uuid } from '../utils.js';
 import { decideQuality, loadSavedQuality, saveQuality, measureFps, isMobile, QUALITY } from '../quality.js';
 import { fetchLiveWeather } from '../world/sky-clock.js';
 import { createUI } from './ui.js';
@@ -51,7 +52,7 @@ const store = {
 };
 const selfId = (() => {
   let id = store.get('mealnstroll.id');
-  if (!id) { id = crypto.randomUUID(); store.set('mealnstroll.id', id); }
+  if (!id) { id = uuid(); store.set('mealnstroll.id', id); }
   return id;
 })();
 const askProfile = store.get('mealnstroll.name') === null; // first visit: ask for a name and outfit
@@ -443,6 +444,7 @@ if (startTime !== 'now') world.setTimeMode(startTime);
 if (params.has('wx') || params.has('season')) world.setPreview({ wxMode: params.get('wx') || 'live', seasonMode: params.get('season') || 'date' });
 const savedQ = loadSavedQuality();
 let currentRoom = roomFromHash(location.hash);
+const viaRoomLink = /(?:^#|&)room=\d+/.test(location.hash);
 ui = createUI({
   courses: Object.fromEntries(Object.keys(COURSE_NAMES).map((k) => [k, { name: COURSE_NAMES[k], loop: courses[k].loop }])),
   profile: { name, outfit, looks: LOOKS, ask: askProfile },
@@ -481,7 +483,7 @@ async function start() {
       notice: () => {}, chat: () => {}
     }
   });
-  session.ready.then((r) => { currentRoom = r.room || currentRoom; ui?.showRoom?.(r, peopleHere()); });
+  session.ready.then((r) => { currentRoom = r.room || currentRoom; ui?.showRoom?.({ ...r, moved: r.moved && viaRoomLink }, peopleHere()); });
   addEventListener('pagehide', (e) => { if (!e.persisted) session.leave(); });
 }
 start();

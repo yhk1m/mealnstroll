@@ -1,7 +1,7 @@
 // © 2026 김용현
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { kindOfCode, sunTimes, skyAt, seoulParts, skyNow, resolveWorld } from '../src/world/sky-clock.js';
+import { fetchLiveWeather, kindOfCode, sunTimes, skyAt, seoulParts, skyNow, resolveWorld } from '../src/world/sky-clock.js';
 
 test('weather codes', () => {
   assert.equal(kindOfCode(0), 'clear');
@@ -55,4 +55,12 @@ test('resolveWorld: no live data is clear and season by date', () => {
 test('resolveWorld: preview overrides from #wx and #season', () => {
   const w = resolveWorld({ ms: Date.UTC(2026, 6, 1, 3), live: null, wxMode: 'snow', seasonMode: 'winter' });
   assert.deepEqual([w.kind, w.cover, w.season], ['snow', 1, 'winter']);
+});
+
+test('fetchLiveWeather rejects data without finite code or wind', async () => {
+  const mk = (current) => async () => ({ ok: true, json: async () => ({ current }) });
+  const good = await fetchLiveWeather(mk({ weather_code: 3, temperature_2m: 5, wind_speed_10m: 4 }));
+  assert.equal(good.code, 3);
+  await assert.rejects(() => fetchLiveWeather(mk({ weather_code: null, wind_speed_10m: 4 })));
+  await assert.rejects(() => fetchLiveWeather(mk({ weather_code: 3 })));
 });

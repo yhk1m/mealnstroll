@@ -61,6 +61,7 @@ export async function fetchLiveWeather(fetchFn = fetch) {
     const res = await fetchFn(WEATHER_URL, { signal: ctl.signal });
     if (!res.ok) throw new Error('status ' + res.status);
     const c = (await res.json()).current;
+    if (!c || !Number.isFinite(c.weather_code) || !Number.isFinite(c.wind_speed_10m)) throw new Error('bad weather data');
     return { code: c.weather_code, temp: c.temperature_2m, wind: c.wind_speed_10m, depth: c.snow_depth || 0 };
   } finally {
     clearTimeout(timer);

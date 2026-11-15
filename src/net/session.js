@@ -8,11 +8,15 @@ const ROOM = (n) => `mealnstroll-room-${n}`;
 const NOTICE = 'mealnstroll-notice';
 const SYNC_WAIT = 3000;
 const RETRY_MS = 2000;
+const SOLO_AFTER = 15000;
 
 export function createSession({ client, selfId, profile, motion, startRoom = 1, cap = ROOM_CAP, validator, on = {} }) {
+  cap = Math.max(1, Math.floor(Number(cap)) || ROOM_CAP);
   let me = { ...profile, motion };
   let roomCh = null, noticeCh = null, room = 0, closed = false, retrying = false, settled = false;
-  const status = (s) => on.status?.(s);
+  let everSubscribed = false, soloShown = false, soloTimer = null;
+  // Never reached Supabase: after a while show the solo text, but keep retrying in the background.
+  const status = (s) => on.status?.(s === 'reconnecting' && soloShown && !everSubscribed ? 'solo' : s);
 
   if (!client) {
     status('solo');
@@ -45,7 +49,7 @@ export function createSession({ client, selfId, profile, motion, startRoom = 1, 
       if (closed || ch !== roomCh) return;
       const list = peersFrom(ch);
       if (!synced) { synced = true; onFirstSync?.(list); }
-      on.peers?.(list);
+      if (settled) on.peers?.(list);   // probed rooms we may leave must not leak ghosts
     });
     ch.on('broadcast', { event: 'chat' }, ({ payload }) => {
       if (closed || ch !== roomCh || !payload || payload.id === selfId || typeof payload.text !== 'string') return;
@@ -57,7 +61,8 @@ export function createSession({ client, selfId, profile, motion, startRoom = 1, 
       if (closed || ch !== roomCh) return;
       onStatus?.(s);
       if (s === 'SUBSCRIBED') {
-        track(ch);
+        everSubscribed = true;
+        if (settled) track(ch);      // do not appear in rooms we are only probing
         if (settled) status('online');
       } else if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT') {
         if (settled) status('reconnecting');
@@ -99,6 +104,12 @@ export function createSession({ client, selfId, profile, motion, startRoom = 1, 
   }
 
   status('connecting');
+  soloTimer = setTimeout(() => {
+    if (closed || everSubscribed) return;
+    soloShown = true;
+    status('solo');
+  }, SOLO_AFTER);
+  soloTimer.unref?.();
   noticeCh = client.channel(NOTICE, { config: { broadcast: { self: false, ack: false } } });
   noticeCh.on('broadcast', { event: 'notice' }, ({ payload }) => on.notice?.(payload || null));
   noticeCh.on('broadcast', { event: 'notice-request' }, ({ payload }) => { if (payload?.id !== selfId) on.noticeRequest?.(payload); });
@@ -109,6 +120,10 @@ export function createSession({ client, selfId, profile, motion, startRoom = 1, 
     if (!closed) {
       settled = true;
       status(r.subscribed ? 'online' : 'reconnecting');
+      if (roomCh) {
+        if (r.subscribed) track(roomCh);
+        on.peers?.(peersFrom(roomCh));
+      }
       if (r.closedEarly) recreate();
     }
     return { room: r.room, moved: r.moved, wanted: r.wanted };
@@ -129,6 +144,7 @@ export function createSession({ client, selfId, profile, motion, startRoom = 1, 
     requestNotice() { noticeCh.send({ type: 'broadcast', event: 'notice-request', payload: { id: selfId } }); },
     leave() {
       closed = true;
+      clearTimeout(soloTimer);
       pushMotion.cancel();
       if (roomCh) client.removeChannel(roomCh);
       if (noticeCh) client.removeChannel(noticeCh);

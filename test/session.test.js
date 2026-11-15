@@ -192,3 +192,39 @@ test('unexpected CLOSED before settling recreates the final room', async () => {
   assert.equal(rooms[0].removed, true);
   s.leave();
 });
+
+test('probed full room leaks no peers and is never tracked', async () => {
+  const client = fakeClient({ 1: 3, 2: 1 });
+  const lists = [];
+  const s = base(client, { on: { peers: (l) => lists.push(l) } });
+  await s.ready;
+  const r1 = client.channels.find((c) => c.name === 'mealnstroll-room-1');
+  assert.equal(r1.tracked.length, 0);
+  assert.ok(lists.length >= 1);
+  assert.ok(lists.every((l) => l.length === 1), 'only room 2 peers');
+  const r2 = client.channels.find((c) => c.name === 'mealnstroll-room-2');
+  assert.equal(r2.tracked.length, 1);
+  s.leave();
+});
+
+test('cap is clamped to at least 1', async () => {
+  const client = fakeClient({ 1: 1 });
+  const s = base(client, { cap: -4 });
+  const r = await s.ready;
+  assert.equal(r.room, 2);
+  s.leave();
+});
+
+test('never subscribed for 15 s shows solo, then online once it subscribes', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] });
+  const client = fakeClient({}, { never: /room-/ });
+  const statuses = [];
+  const s = base(client, { on: { status: (x) => statuses.push(x) } });
+  t.mock.timers.tick(3000);
+  await s.ready;
+  t.mock.timers.tick(12000);
+  assert.deepEqual(statuses, ['connecting', 'reconnecting', 'solo']);
+  client.channels.find((c) => c.name === 'mealnstroll-room-1').statusCb('SUBSCRIBED');
+  assert.equal(statuses[statuses.length - 1], 'online');
+  s.leave();
+});
