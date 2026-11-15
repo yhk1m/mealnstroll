@@ -5,16 +5,24 @@ import { createSession } from '../src/net/session.js';
 import { createValidator } from '../src/net/validate.js';
 
 // Minimal stand-in for supabase-js realtime channels.
-function fakeClient(occupants = {}) {
+function fakeClient(occupants = {}, opts = {}) {
   const channels = [];
   return {
     channels,
-    channel(name, opts) {
+    channel(name, chOpts) {
+      // like realtime-js: the existing instance is returned until it is removed
+      const existing = channels.find((c) => c.name === name && !c.removed);
+      if (existing) return existing;
       const handlers = [];
       const ch = {
-        name, opts, tracked: [], sent: [], removed: false,
+        name, opts: chOpts, tracked: [], sent: [], removed: false,
         on(type, filter, cb) { handlers.push({ type, filter, cb }); return ch; },
-        subscribe(cb) { setTimeout(() => { cb('SUBSCRIBED'); ch.emitSync(); }, 0); return ch; },
+        subscribe(cb) {
+          ch.statusCb = cb;
+          if (opts.never && opts.never.test(name)) return ch;
+          setTimeout(() => { cb('SUBSCRIBED'); ch.emitSync(); }, 0);
+          return ch;
+        },
         presenceState() {
           const n = Number((name.match(/room-(\d+)/) || [])[1]);
           const state = {};
@@ -30,7 +38,7 @@ function fakeClient(occupants = {}) {
       channels.push(ch);
       return ch;
     },
-    removeChannel(ch) { ch.removed = true; }
+    removeChannel(ch) { ch.removed = true; return Promise.resolve('ok'); }
   };
 }
 
@@ -89,4 +97,73 @@ test('no client means solo mode', async () => {
   const r = await s.ready;
   assert.equal(r.room, 0);
   assert.deepEqual(statuses, ['solo']);
+});
+
+const tick = () => new Promise((r) => setTimeout(r, 5));
+
+test('channel error then auto rejoin: status follows, no new channel', async () => {
+  const client = fakeClient({});
+  const statuses = [];
+  const s = base(client, { on: { status: (x) => statuses.push(x) } });
+  await s.ready;
+  const room = client.channels.find((c) => c.name === 'mealnstroll-room-1');
+  const before = client.channels.length;
+  room.statusCb('CHANNEL_ERROR');
+  room.statusCb('SUBSCRIBED');
+  assert.deepEqual(statuses, ['connecting', 'online', 'reconnecting', 'online']);
+  assert.equal(client.channels.length, before);
+  assert.equal(room.tracked.length, 2);
+  s.leave();
+});
+
+test('fake client returns the existing instance for the same topic', () => {
+  const client = fakeClient({});
+  assert.equal(client.channel('a'), client.channel('a'));
+});
+
+test('never subscribed join is reconnecting, not online', async () => {
+  const client = fakeClient({}, { never: /room-/ });
+  const statuses = [];
+  const s = base(client, { on: { status: (x) => statuses.push(x) } });
+  await s.ready;
+  assert.deepEqual(statuses, ['connecting', 'reconnecting']);
+  s.leave();
+});
+
+test('leave during chooseRoom never goes online or opens more rooms', async () => {
+  const client = fakeClient({ 1: 3 });
+  const statuses = [];
+  const s = base(client, { on: { status: (x) => statuses.push(x) } });
+  s.leave();
+  await s.ready;
+  await tick();
+  assert.deepEqual(statuses, ['connecting']);
+  assert.ok(!client.channels.some((c) => c.name === 'mealnstroll-room-2'));
+});
+
+test('chat is validated: name cut, bad at dropped', async () => {
+  const client = fakeClient({});
+  const got = [];
+  const s = base(client, { on: { chat: (m) => got.push(m) } });
+  await s.ready;
+  const room = client.channels.find((c) => c.name === 'mealnstroll-room-1');
+  room.emitBroadcast('chat', { id: 'x', name: 7, text: 'hi', at: 5 });
+  room.emitBroadcast('chat', { id: 'x', name: 'a', text: 'hi', at: 'now' });
+  assert.equal(got.length, 1);
+  assert.equal(got[0].name, '산책자');
+  assert.equal(got[0].at, 5);
+  s.leave();
+});
+
+test('unexpected CLOSED recreates the room after removing the old channel', async () => {
+  const client = fakeClient({});
+  const s = base(client);
+  await s.ready;
+  const room = client.channels.find((c) => c.name === 'mealnstroll-room-1');
+  room.statusCb('CLOSED');
+  await new Promise((r) => setTimeout(r, 2100));
+  const rooms = client.channels.filter((c) => c.name === 'mealnstroll-room-1');
+  assert.equal(rooms.length, 2);
+  assert.equal(rooms[0].removed, true);
+  s.leave();
 });

@@ -1,6 +1,6 @@
 // © 2026 김용현
 // The only module that talks to Supabase. Swap this file to move to another backend.
-// supabase-js allows one subscribe() per channel, so drops are routed through `dropHandler`.
+// realtime-js rejoins errored channels itself; we only mirror its state into `status`.
 import { chooseRoom, ROOM_CAP, ROOM_MAX } from './rooms.js';
 import { throttleLatest } from './throttle.js';
 
@@ -8,12 +8,10 @@ const ROOM = (n) => `mealnstroll-room-${n}`;
 const NOTICE = 'mealnstroll-notice';
 const SYNC_WAIT = 3000;
 const RETRY_MS = 2000;
-const DROPPED = new Set(['CHANNEL_ERROR', 'TIMED_OUT', 'CLOSED']);
 
 export function createSession({ client, selfId, profile, motion, startRoom = 1, cap = ROOM_CAP, validator, on = {} }) {
   let me = { ...profile, motion };
-  let roomCh = null, noticeCh = null, room = 0, closed = false, retrying = false;
-  let dropHandler = () => {};
+  let roomCh = null, noticeCh = null, room = 0, closed = false, retrying = false, settled = false;
   const status = (s) => on.status?.(s);
 
   if (!client) {
@@ -36,50 +34,67 @@ export function createSession({ client, selfId, profile, motion, startRoom = 1, 
     return list;
   }
 
-  function openRoom(n, onFirstSync) {
+  const track = (ch) => { try { Promise.resolve(ch?.track(me)).catch(() => {}); } catch { /* ignore */ } };
+
+  // phoenix rejoins errored channels by itself and calls this callback with SUBSCRIBED again,
+  // so CHANNEL_ERROR / TIMED_OUT only change the status. Only an unexpected CLOSED recreates.
+  function openRoom(n, { onFirstSync, onSubscribed } = {}) {
     const ch = client.channel(ROOM(n), { config: { presence: { key: selfId }, broadcast: { self: false, ack: false } } });
     let synced = false;
     ch.on('presence', { event: 'sync' }, () => {
+      if (closed || ch !== roomCh) return;
       const list = peersFrom(ch);
       if (!synced) { synced = true; onFirstSync?.(list); }
       on.peers?.(list);
     });
     ch.on('broadcast', { event: 'chat' }, ({ payload }) => {
-      if (payload && payload.id !== selfId && typeof payload.text === 'string') on.chat?.({ ...payload, text: payload.text.slice(0, 200) });
+      if (closed || ch !== roomCh || !payload || payload.id === selfId || typeof payload.text !== 'string') return;
+      const at = Number(payload.at);
+      if (!Number.isFinite(at)) return;
+      on.chat?.({ id: String(payload.id), name: validator.profile(payload).name, text: payload.text.slice(0, 200), at });
     });
     ch.subscribe((s) => {
-      if (s === 'SUBSCRIBED') ch.track(me);
-      else if (DROPPED.has(s) && ch === roomCh) dropHandler();
+      if (closed || ch !== roomCh) return;
+      if (s === 'SUBSCRIBED') {
+        track(ch);
+        onSubscribed?.();
+        if (settled) status('online');
+      } else if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT') {
+        if (settled) status('reconnecting');
+      } else if (s === 'CLOSED') {
+        if (settled) recreate();
+      }
     });
     return ch;
   }
 
   function tryJoin(n) {
     return new Promise((resolve) => {
-      let done = false, timer = null;
+      if (closed) { resolve({ others: 0, subscribed: false, leave: async () => {} }); return; }
+      let done = false, timer = null, subscribed = false;
       function finish(list) {
         if (done) return;
         done = true;
         clearTimeout(timer);
-        resolve({ others: list.length, leave: async () => { client.removeChannel(ch); } });
+        resolve({ others: list.length, subscribed, leave: async () => { await client.removeChannel(ch); } });
       }
-      const ch = openRoom(n, finish);
+      const ch = openRoom(n, { onFirstSync: finish, onSubscribed: () => { subscribed = true; } });
       roomCh = ch;
       timer = setTimeout(() => finish(peersFrom(ch)), SYNC_WAIT);
     });
   }
 
-  function reconnect() {
+  function recreate() {
     if (closed || retrying) return;
     retrying = true;
     status('reconnecting');
-    setTimeout(() => {
+    setTimeout(async () => {
+      const old = roomCh;
+      roomCh = null;              // so the old channel's callbacks are ignored
+      try { if (old) await client.removeChannel(old); } catch { /* ignore */ }
       retrying = false;
       if (closed) return;
-      const old = roomCh;
-      roomCh = null;              // so the old channel's CLOSED does not loop back here
-      if (old) client.removeChannel(old);
-      roomCh = openRoom(room, () => status('online'));
+      roomCh = openRoom(room);
     }, RETRY_MS);
   }
 
@@ -91,17 +106,19 @@ export function createSession({ client, selfId, profile, motion, startRoom = 1, 
 
   const ready = chooseRoom({ start: startRoom, cap, max: ROOM_MAX, tryJoin }).then((r) => {
     room = r.room;
-    dropHandler = reconnect;
-    status('online');
+    if (!closed) {
+      settled = true;
+      status(r.subscribed ? 'online' : 'reconnecting');
+    }
     return { room: r.room, moved: r.moved, wanted: r.wanted };
   });
 
-  const pushMotion = throttleLatest(() => roomCh?.track(me), 500);
+  const pushMotion = throttleLatest(() => track(roomCh), 500);
 
   return {
     ready,
     setMotion(m) { me = { ...me, motion: m }; pushMotion(); },
-    setProfile(p) { me = { ...me, ...p }; roomCh?.track(me); },
+    setProfile(p) { me = { ...me, ...p }; track(roomCh); },
     sendChat(text) {
       const payload = { id: selfId, name: me.name, text: String(text).slice(0, 200), at: Date.now() };
       roomCh?.send({ type: 'broadcast', event: 'chat', payload });
@@ -111,7 +128,6 @@ export function createSession({ client, selfId, profile, motion, startRoom = 1, 
     requestNotice() { noticeCh.send({ type: 'broadcast', event: 'notice-request', payload: { id: selfId } }); },
     leave() {
       closed = true;
-      dropHandler = () => {};
       pushMotion.cancel();
       if (roomCh) client.removeChannel(roomCh);
       if (noticeCh) client.removeChannel(noticeCh);

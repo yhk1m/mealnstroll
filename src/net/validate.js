@@ -24,13 +24,14 @@ export function createValidator({ bounds, courses }) {
     }
     if (m.kind === 'course') {
       if (!known.has(m.course) || !okSpeed(m.speed) || !fin(m.t0)) return null;
+      if (m.offset !== undefined && !fin(m.offset)) return null;
       return { kind: 'course', course: m.course, speed: m.speed, t0: m.t0, offset: fin(m.offset) ? m.offset : 0 };
     }
     return null;
   }
 
   function profile(p) {
-    const name = typeof p?.name === 'string' && p.name.trim() ? p.name.trim().slice(0, 12) : '산책자';
+    const name = typeof p?.name === 'string' && p.name.trim() ? Array.from(p.name.trim()).slice(0, 12).join('') : '산책자';
     const outfit = Number.isInteger(p?.outfit) && p.outfit >= 0 && p.outfit < OUTFITS ? p.outfit : 0;
     const joinedAt = fin(p?.joinedAt) ? p.joinedAt : 0;
     return { name, outfit, joinedAt };

@@ -23,7 +23,8 @@ test('rejects bad motions', () => {
     { kind: 'go', pts: [[0, 0], [5, 5]], speed: 1, t0: 'now' },
     { kind: 'go', pts: [[0, 0], [5, 5]], speed: 1, t0: 1, then: { course: 'moon' } },
     { kind: 'course', course: 'moon', speed: 1, t0: 1, offset: 0 },
-    { kind: 'course', course: 'track', speed: 0.1, t0: 1, offset: 0 }
+    { kind: 'course', course: 'track', speed: 0.1, t0: 1, offset: 0 },
+    { kind: 'course', course: 'track', speed: 1, t0: 1, offset: 'far' }
   ];
   for (const m of bad) assert.equal(v.motion(m), null, JSON.stringify(m));
 });
@@ -36,4 +37,9 @@ test('motion is copied with only known fields', () => {
 test('profile trims name and fixes outfit', () => {
   assert.deepEqual(v.profile({ name: '아주아주아주아주긴이름입니다', outfit: 3, joinedAt: 5 }), { name: '아주아주아주아주긴이름입', outfit: 3, joinedAt: 5 });
   assert.deepEqual(v.profile({ name: 7, outfit: 99, joinedAt: 'x' }), { name: '산책자', outfit: 0, joinedAt: 0 });
+});
+
+test('name is cut by code points, not UTF-16 units', () => {
+  const name = '😀'.repeat(13);
+  assert.equal(Array.from(v.profile({ name }).name).length, 12);
 });
