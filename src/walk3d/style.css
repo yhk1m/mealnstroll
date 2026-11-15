@@ -1,4 +1,103 @@
 /* © 2026 김용현 */
-html, body { margin: 0; height: 100%; overflow: hidden; background: #cfe3ee; }
-#c { display: block; width: 100vw; height: 100vh; }
-.err { position: fixed; inset: 0; display: grid; place-items: center; padding: 16px; font: 18px 'Gowun Dodum', sans-serif; color: #2b2b2b; background: #f4efe6; text-align: center; }
+/* Layout: the scene fills the screen; quiet glass controls float along the edges (from the draft). */
+:root {
+  color-scheme: dark;
+  --ink: #fbf6ec;
+  --ink-soft: rgba(251, 246, 236, .74);
+  --glass: rgba(24, 28, 38, .54);
+  --line: rgba(251, 246, 236, .2);
+  --accent: #f4b860;
+  --accent-ink: #2a1f10;
+  --display: "Gowun Batang", "Noto Serif KR", serif;
+  --body: "Gowun Dodum", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --dock-h: 72px;
+  --side-l: max(16px, env(safe-area-inset-left, 0px));
+  --side-r: max(16px, env(safe-area-inset-right, 0px));
+  --top: calc(14px + env(safe-area-inset-top, 0px));
+}
+html, body { margin: 0; height: 100%; overflow: hidden; }
+body { background: #20283a; color: var(--ink); font-family: var(--body); font-size: 14px; }
+#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: pointer; }
+.vignette { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 58%, rgba(15, 12, 24, .34) 100%); }
+.err { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; font-size: 18px; background: #20283a; color: var(--ink); }
+button { font-family: var(--body); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ico { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Top left: title, hint, room badge and connection state. */
+.head { position: fixed; left: var(--side-l); top: var(--top); max-width: calc(100vw - 32px); pointer-events: none; word-break: keep-all; }
+.head h1, .head p { text-shadow: 0 1px 3px rgba(10, 10, 20, .85), 0 0 12px rgba(10, 10, 20, .6); }
+.head h1 { margin: 0; font: 700 22px/1.2 var(--display); }
+.head p { margin: 4px 0 0; font-size: 13px; color: var(--ink-soft); }
+.chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
+.chip { pointer-events: auto; display: inline-flex; align-items: center; gap: 4px; min-height: 40px; box-sizing: border-box; padding: 3px 3px 3px 12px; font-size: 13px; color: var(--ink); background: var(--glass); border: 1px solid var(--line); border-radius: 12px; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); white-space: nowrap; }
+.chip[hidden] { display: none; }
+.chip b { font-weight: 400; }
+.chip .count { color: var(--ink-soft); }
+.chip button { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px; margin-left: 4px; font-size: 13px; color: var(--ink); background: rgba(251, 246, 236, .12); border: 0; border-radius: 9px; cursor: pointer; }
+.chip button:hover { background: rgba(251, 246, 236, .22); }
+.chip .ico { width: 16px; height: 16px; }
+#net-status { padding-right: 12px; color: var(--ink-soft); }
+#net-status i { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-right: 4px; }
+#net-status[data-s="solo"] i { background: rgba(251, 246, 236, .5); }
+@media (prefers-reduced-motion: no-preference) {
+  #net-status[data-s="connecting"] i, #net-status[data-s="reconnecting"] i { animation: blink 1.2s ease-in-out infinite; }
+}
+@keyframes blink { 50% { opacity: .25; } }
+
+.credit { position: fixed; right: var(--side-r); top: var(--top); max-width: 46ch; font-size: 11px; line-height: 1.5; color: var(--ink-soft); text-align: right; text-shadow: 0 1px 6px rgba(10, 10, 20, .7); pointer-events: none; word-break: keep-all; }
+
+/* Bottom menu. */
+.dock { position: fixed; left: 0; right: 0; bottom: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; padding-block: 0 calc(14px + env(safe-area-inset-bottom, 0px)); padding-left: var(--side-l); padding-right: var(--side-r); pointer-events: none; }
+.seg, .join, .quiet { pointer-events: auto; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--line); border-radius: 12px; }
+.seg { display: flex; background: var(--glass); padding: 3px; }
+.seg button, .join, .quiet { font: 14px/1 var(--body); color: var(--ink); background: none; border: 0; padding: 9px 12px; border-radius: 9px; cursor: pointer; min-height: 40px; white-space: nowrap; }
+.seg button[aria-pressed="true"] { background: rgba(251, 246, 236, .9); color: #1f2430; }
+.join { background: var(--accent); color: var(--accent-ink); border: 1px solid transparent; padding: 9px 16px; font-weight: 700; border-radius: 12px; min-height: 46px; }
+.join[aria-pressed="true"] { background: var(--glass); color: var(--ink); border-color: var(--line); font-weight: 400; }
+.quiet { background: var(--glass); border-radius: 12px; border: 1px solid var(--line); min-height: 46px; }
+
+/* Settings panel sits right above the dock. */
+.panel { position: fixed; right: var(--side-r); bottom: var(--dock-h); display: flex; flex-direction: column; gap: 8px; padding: 12px; max-width: calc(100vw - 32px); max-height: 62vh; overflow-y: auto; box-sizing: border-box; background: var(--glass); border: 1px solid var(--line); border-radius: 14px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.panel[hidden] { display: none; }
+.panel .row { display: flex; align-items: center; gap: 10px; }
+.panel .row > span { flex: none; width: 58px; font-size: 13px; color: var(--ink-soft); }
+.panel .seg { flex: 1 1 auto; flex-wrap: wrap; border: 0; background: rgba(251, 246, 236, .08); }
+.panel .seg button { flex: 1 1 auto; }
+.panel .link { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 12px; font-size: 13px; color: var(--ink); background: rgba(251, 246, 236, .08); border: 0; border-radius: 9px; cursor: pointer; }
+.panel .link:hover { background: rgba(251, 246, 236, .16); }
+
+/* Short notes above the dock, and the fps number in the lower right corner. */
+#toast { position: fixed; left: 50%; bottom: calc(var(--dock-h) + 12px); transform: translateX(-50%); max-width: calc(100vw - 32px); box-sizing: border-box; padding: 10px 16px; font-size: 14px; text-align: center; word-break: keep-all; color: var(--accent-ink); background: var(--accent); border-radius: 12px; pointer-events: none; }
+#toast[hidden] { display: none; }
+#fps { position: fixed; right: var(--side-r); bottom: calc(var(--dock-h) + 8px); padding: 4px 8px; font: 12px/1 ui-monospace, Consolas, monospace; color: var(--ink); background: var(--glass); border-radius: 8px; pointer-events: none; }
+#fps[hidden] { display: none; }
+
+/* First visit: name and outfit card. */
+#profile { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(420px, calc(100vw - 32px)); max-height: calc(100dvh - 24px); overflow-y: auto; box-sizing: border-box; padding: 22px; word-break: keep-all; background: rgba(24, 28, 38, .8); border: 1px solid var(--line); border-radius: 16px; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+#profile[hidden] { display: none; }
+#profile h2 { margin: 0 0 8px; font: 700 22px/1.2 var(--display); }
+#profile p { margin: 0 0 14px; font-size: 14px; line-height: 1.6; color: var(--ink-soft); }
+#profile label { display: block; margin-bottom: 6px; font-size: 13px; color: var(--ink-soft); }
+#p-name { width: 100%; box-sizing: border-box; min-height: 44px; margin-bottom: 14px; padding: 10px 12px; font: 16px/1.2 var(--body); color: var(--ink); background: rgba(251, 246, 236, .08); border: 1px solid var(--line); border-radius: 10px; }
+.looks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 18px; }
+.looks button { display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 48px; padding: 6px; background: rgba(251, 246, 236, .08); border: 2px solid transparent; border-radius: 10px; cursor: pointer; }
+.looks button[aria-pressed="true"] { border-color: var(--accent); background: rgba(251, 246, 236, .18); }
+.looks i { width: 20px; height: 20px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, .25); }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.actions button { flex: 1 1 auto; }
+
+body.bare .head, body.bare .credit, body.bare .seg, body.bare .join, body.bare #settings-btn, body.bare #panel { display: none; }
+body.bare .quiet { opacity: .55; }
+
+@media (max-width: 720px) {
+  .credit { display: none; }
+  .dock { gap: 6px; }
+  .dock > .seg { flex: 1 1 100%; min-width: 0; }
+  .panel { left: var(--side-l); right: var(--side-r); }
+  .panel .row { align-items: flex-start; flex-direction: column; gap: 4px; }
+  .panel .seg { width: 100%; }
+  .seg button { flex: 1 1 0; min-width: 0; padding: 8px 2px; font-size: 13px; }
+  .join, .quiet { flex: 1 1 0; min-width: 0; padding: 8px 4px; font-size: 13px; }
+  .head h1 { font-size: 20px; }
+}

@@ -15,6 +15,7 @@ import { createSession } from '../net/session.js';
 import { supabase } from '../supabase.js';
 import { decideQuality, loadSavedQuality, saveQuality, measureFps, isMobile, QUALITY } from '../quality.js';
 import { fetchLiveWeather } from '../world/sky-clock.js';
+import { createUI } from './ui.js';
 
 // ---------- 1. setup ----------
 const courses = makeCourses(courseRings);
@@ -26,7 +27,7 @@ let clockOffset = 0;
 const serverNow = () => Date.now() + clockOffset;
 
 // ---------- 2. world (or a notice when WebGL is missing) ----------
-let world, ui = null; // ui: the menu module arrives in the next task (calls stay optional)
+let world, ui = null; // ui stays null until the menu is built below
 let session = null, netStatus = 'connecting';
 try {
   world = createWorld({
@@ -53,7 +54,8 @@ const selfId = (() => {
   if (!id) { id = crypto.randomUUID(); store.set('mealnstroll.id', id); }
   return id;
 })();
-const name = store.get('mealnstroll.name') || '';
+const askProfile = store.get('mealnstroll.name') === null; // first visit: ask for a name and outfit
+let name = store.get('mealnstroll.name') || '';
 let outfit = Number(store.get('mealnstroll.outfit'));
 if (!Number.isInteger(outfit) || outfit < 0 || outfit >= LOOKS.length) {
   outfit = Math.floor(Math.random() * LOOKS.length);
@@ -83,9 +85,25 @@ function courseNow(m, now) {
 }
 
 // ---------- my walker ----------
-const me = makePerson(LOOKS[outfit], PERSON_SCALE);
+let me = makePerson(LOOKS[outfit], PERSON_SCALE);
 me.add(world.faceLight);
 world.scene.add(me);
+function setProfile(p) {
+  name = p.name;
+  store.set('mealnstroll.name', name);
+  if (p.outfit !== outfit && LOOKS[p.outfit]) {
+    outfit = p.outfit;
+    store.set('mealnstroll.outfit', String(outfit));
+    const next = makePerson(LOOKS[outfit], PERSON_SCALE);
+    next.position.copy(me.position);
+    next.rotation.y = me.rotation.y;
+    next.add(world.faceLight);
+    world.scene.remove(me);
+    world.scene.add(next);
+    me = next;
+  }
+  session?.setProfile({ name, outfit });
+}
 {
   const p = positionAt(myMotion, serverNow());
   me.position.set(p.x, world.heightAt(p.x, p.z) + 0.13, p.z);
@@ -225,7 +243,16 @@ function tap(cx, cy) {
 
 // ---------- 7. other people ----------
 const FAR = 25, KEEP_MS = 30000;
-const peers = new Map(); // id -> { near, far, motion, last, outfit, name, joinedAt, goneAt }
+const peers = new Map(); // id -> { near, far, motion, last, outfit, name, joinedAt, goneAt, lane }
+// People on the same course step a little to one side so they do not stand inside each other.
+// Drawing only: the motion records and positionAt stay exact.
+function laneOf(id) {
+  let h = 2166136261;
+  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619);
+  h = Math.imul(h ^ (h >>> 16), 0x85ebca6b); h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35); h ^= h >>> 16; // spread close ids apart
+  return ((h >>> 0) / 4294967295 - 0.5); // -0.5..+0.5 m
+}
+const onCourseNow = (m, now) => m.kind === 'course' || (m.kind === 'go' && !!m.then && now >= goEnd(m));
 function removePeer(id, v) {
   world.scene.remove(v.near, v.far);
   peers.delete(id);
@@ -238,7 +265,7 @@ function syncPeers(list) {
     if (!v || v.outfit !== p.outfit) {
       if (v) world.scene.remove(v.near, v.far);
       const look = LOOKS[p.outfit] || LOOKS[0];
-      v = { near: makePerson(look, PERSON_SCALE), far: makeFarPerson(look), outfit: p.outfit, last: v?.last || null, motion: v?.motion || null };
+      v = { near: makePerson(look, PERSON_SCALE), far: makeFarPerson(look), outfit: p.outfit, last: v?.last || null, motion: v?.motion || null, lane: v?.lane || 0, laneTo: laneOf(p.id) };
       v.far.visible = false;
       world.scene.add(v.near, v.far);
       peers.set(p.id, v);
@@ -250,7 +277,7 @@ function syncPeers(list) {
     else if (!v.motion) v.motion = v.last ? { kind: 'idle', at: [v.last.x, v.last.z], face: v.last.heading } : { kind: 'idle', at: [0, 0], face: 0 };
   }
   for (const [id, v] of peers) if (!seen.has(id)) leaveLater(id, v);
-  ui?.showCount?.(peers.size + 1);
+  ui?.setCount?.(peers.size + 1);
 }
 // Someone missing from the list keeps walking for 30 s; if they come back in time nothing changes.
 function leaveLater(id, v) {
@@ -272,14 +299,17 @@ function drawPeers(dt) {
   for (const v of peers.values()) {
     const p = positionAt(v.motion, now);
     v.last = p;
-    const y = world.heightAt(p.x, p.z) + 0.13;
-    const d = world.camera.position.distanceTo(tmpV.set(p.x, y, p.z));
+    // Ease the side step in and out, so arriving on a course or leaving it never jumps.
+    v.lane += ((onCourseNow(v.motion, now) ? v.laneTo : 0) - v.lane) * (1 - Math.exp(-dt * 2));
+    const x = p.x + Math.cos(p.heading) * v.lane, z = p.z - Math.sin(p.heading) * v.lane;
+    const y = world.heightAt(x, z) + 0.13;
+    const d = world.camera.position.distanceTo(tmpV.set(x, y, z));
     const far = d > FAR;
     v.near.visible = !far; v.far.visible = far;
     // Nobody walks through the lens.
     if (viewMode !== 'aerial' && d < 1.2) v.near.visible = v.far.visible = false;
     const obj = far ? v.far : v.near;
-    obj.position.set(p.x, y, p.z);
+    obj.position.set(x, y, z);
     obj.rotation.y = angLerp(obj.rotation.y, p.heading, k);
     if (!far) animatePerson(v.near, dt, p.speed);
     else if (frameNo % 2 === 0) obj.position.y += p.moving ? Math.abs(Math.sin(now / 160)) * 0.02 : 0;
@@ -338,6 +368,7 @@ function updateCamera(dt, t) {
 
 // ---------- 11. quality ----------
 function setQuality(level, save) {
+  if (level === 'auto') { if (save) saveQuality('auto'); pickQuality(); return; }
   if (!QUALITY[level]) return;
   world.setQuality(QUALITY[level]);
   if (save) saveQuality(level);
@@ -345,6 +376,7 @@ function setQuality(level, save) {
 async function pickQuality() {
   if (QUALITY[params.get('q')]) return setQuality(params.get('q')); // hidden override for checks
   const saved = loadSavedQuality();
+  if (saved !== 'high' && saved !== 'low') world.setQuality(QUALITY.high); // measure from the full picture
   const fps = saved === 'high' || saved === 'low' ? 60 : await measureFps();
   setQuality(decideQuality({ saved, fps, mobile: isMobile() }));
 }
@@ -364,8 +396,31 @@ world.renderer.setAnimationLoop((now) => {
 });
 
 // What the menu (next task) and checks drive.
-const api = { walkTo, joinCourse, leaveCourse, setPace, setView, setQuality, courseNow: () => courseNow(myMotion, serverNow()), get motion() { return myMotion; }, get status() { return netStatus; }, get courseLine() { return courseLine; }, me, world, peers, syncPeers };
+const api = { walkTo, joinCourse, leaveCourse, setPace, setView, setQuality, setProfile, courseNow: () => courseNow(myMotion, serverNow()), get motion() { return myMotion; }, get status() { return netStatus; }, get courseLine() { return courseLine; }, get me() { return me; }, get ui() { return ui; }, world, peers, syncPeers };
 if (params.has('debug')) window.__walk3d = api;
+
+// ---------- 12. screen controls ----------
+const TIMES = ['now', 'day', 'sunset', 'night'];
+const startTime = TIMES.includes(params.get('time')) ? params.get('time') : 'now';
+if (startTime !== 'now') world.setTimeMode(startTime);
+// Weather and season previews are hidden settings only (#wx=, #season=).
+if (params.has('wx') || params.has('season')) world.setPreview({ wxMode: params.get('wx') || 'live', seasonMode: params.get('season') || 'date' });
+const savedQ = loadSavedQuality();
+let currentRoom = roomFromHash(location.hash);
+ui = createUI({
+  courses: Object.fromEntries(Object.keys(COURSE_NAMES).map((k) => [k, { name: COURSE_NAMES[k], loop: courses[k].loop }])),
+  profile: { name, outfit, looks: LOOKS, ask: askProfile },
+  state: { pace, view: viewMode, time: startTime, quality: QUALITY[params.get('q')] ? params.get('q') : savedQ === 'high' || savedQ === 'low' ? savedQ : 'auto' },
+  showFps: params.has('fps'),
+  onCourse: joinCourse, onLeaveCourse: leaveCourse, onPace: setPace, onView: setView,
+  onTime: (t) => world.setTimeMode(t),
+  onQuality: (q) => setQuality(q, true),
+  onProfile: setProfile,
+  getRoomLink: () => location.origin + location.pathname + '#room=' + currentRoom
+});
+ui.syncJoin(myMotion);
+ui.showStatus(netStatus);
+ui.askProfileIfNeeded();
 
 // ---------- 9. start (es2020 build: no top-level await) ----------
 async function start() {
@@ -388,7 +443,7 @@ async function start() {
       notice: () => {}, chat: () => {}
     }
   });
-  session.ready.then((r) => ui?.showRoom?.(r, peers.size + 1));
+  session.ready.then((r) => { currentRoom = r.room || currentRoom; ui?.showRoom?.(r, peers.size + 1); });
   addEventListener('pagehide', (e) => { if (!e.persisted) session.leave(); });
 }
 start();

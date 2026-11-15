@@ -11,6 +11,51 @@
   </head>
   <body>
     <canvas id="c" aria-label="학교 운동장 3D 풍경"></canvas>
+    <div class="vignette"></div>
+    <div class="head">
+      <h1>급식먹고산책</h1>
+      <p id="hint">바닥을 누르면 그곳으로 걸어갑니다</p>
+      <div class="chips">
+        <div class="chip" id="room-badge" hidden>
+          <b id="room-text"></b>
+          <button id="copy-link" type="button">
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg>
+            <span>같이 걷기 링크 복사</span>
+          </button>
+        </div>
+        <div class="chip" id="net-status" role="status" hidden><i></i><span></span></div>
+      </div>
+    </div>
+    <div class="credit">건물 위치와 높이, 트랙은 실제 자료입니다. 지도 자료: OpenStreetMap 기여자. 날씨 자료: Open-Meteo.</div>
+    <div class="dock">
+      <div class="seg" id="seg-course" role="group" aria-label="산책 코스">
+        <button data-v="track">운동장 트랙</button><button data-v="campus">건물 주변</button><button data-v="outside">학교 밖</button><button data-v="road">학교 안 길</button>
+      </div>
+      <button class="join" id="join" aria-pressed="true">코스에서 나오기</button>
+      <button class="quiet" id="settings-btn" aria-expanded="false" aria-controls="panel">설정</button>
+      <button class="quiet" id="quiet" aria-pressed="false">풍경만 보기</button>
+    </div>
+    <div class="panel" id="panel" hidden>
+      <div class="row"><span>걷는 속도</span><div class="seg" id="seg-pace" role="group" aria-label="걷는 속도"><button data-v="slow">천천히</button><button data-v="normal">보통</button><button data-v="fast">빠르게</button></div></div>
+      <div class="row"><span>시간</span><div class="seg" id="seg-time" role="group" aria-label="시간"><button data-v="now">지금</button><button data-v="day">낮</button><button data-v="sunset">노을</button><button data-v="night">밤</button></div></div>
+      <div class="row"><span>시점</span><div class="seg" id="seg-view" role="group" aria-label="시점"><button data-v="walk">따라 걷기</button><button data-v="face">얼굴 보기</button><button data-v="aerial">내려 보기</button></div></div>
+      <div class="row"><span>화질</span><div class="seg" id="seg-quality" role="group" aria-label="화질"><button data-v="auto">자동</button><button data-v="high">고화질</button><button data-v="low">가벼운 화면</button></div></div>
+      <button class="link" id="profile-btn" type="button">
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+        <span>이름과 복장 바꾸기</span>
+      </button>
+    </div>
+    <div id="toast" role="status" hidden></div>
+    <div id="fps" aria-hidden="true" hidden></div>
+    <div id="profile" role="dialog" aria-labelledby="p-title" hidden>
+      <h2 id="p-title">함께 걸을 모습 고르기</h2>
+      <p>다른 사람에게 보일 이름과 옷을 골라 주세요. 나중에 설정에서 바꿀 수 있어요.</p>
+      <label for="p-name">이름이나 별명 (12자까지)</label>
+      <input id="p-name" maxlength="12" placeholder="예: 김 선생님" autocomplete="off" />
+      <label id="p-looks-label">복장</label>
+      <div class="looks" id="p-looks" role="group" aria-labelledby="p-looks-label"></div>
+      <div class="actions"><button class="join" id="p-save" type="button">이대로 걷기</button><button class="quiet" id="p-later" type="button">나중에 할게요</button></div>
+    </div>
     <script type="module" src="/src/walk3d/main.js"></script>
   </body>
 </html>
