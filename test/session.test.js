@@ -167,3 +167,28 @@ test('unexpected CLOSED recreates the room after removing the old channel', asyn
   assert.equal(rooms[0].removed, true);
   s.leave();
 });
+
+test('error during the first sync wait settles as reconnecting', async () => {
+  const client = fakeClient({}, { never: /room-/ });
+  const statuses = [];
+  const s = base(client, { on: { status: (x) => statuses.push(x) } });
+  const room = client.channels.find((c) => c.name === 'mealnstroll-room-1');
+  room.statusCb('SUBSCRIBED');
+  room.statusCb('CHANNEL_ERROR');
+  await s.ready;
+  assert.deepEqual(statuses, ['connecting', 'reconnecting']);
+  s.leave();
+});
+
+test('unexpected CLOSED before settling recreates the final room', async () => {
+  const client = fakeClient({}, { never: /room-/ });
+  const s = base(client);
+  const room = client.channels.find((c) => c.name === 'mealnstroll-room-1');
+  room.statusCb('CLOSED');
+  await s.ready;
+  await new Promise((r) => setTimeout(r, 2100));
+  const rooms = client.channels.filter((c) => c.name === 'mealnstroll-room-1');
+  assert.equal(rooms.length, 2);
+  assert.equal(rooms[0].removed, true);
+  s.leave();
+});

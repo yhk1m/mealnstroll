@@ -38,7 +38,7 @@ export function createSession({ client, selfId, profile, motion, startRoom = 1, 
 
   // phoenix rejoins errored channels by itself and calls this callback with SUBSCRIBED again,
   // so CHANNEL_ERROR / TIMED_OUT only change the status. Only an unexpected CLOSED recreates.
-  function openRoom(n, { onFirstSync, onSubscribed } = {}) {
+  function openRoom(n, { onFirstSync, onStatus } = {}) {
     const ch = client.channel(ROOM(n), { config: { presence: { key: selfId }, broadcast: { self: false, ack: false } } });
     let synced = false;
     ch.on('presence', { event: 'sync' }, () => {
@@ -55,9 +55,9 @@ export function createSession({ client, selfId, profile, motion, startRoom = 1, 
     });
     ch.subscribe((s) => {
       if (closed || ch !== roomCh) return;
+      onStatus?.(s);
       if (s === 'SUBSCRIBED') {
         track(ch);
-        onSubscribed?.();
         if (settled) status('online');
       } else if (s === 'CHANNEL_ERROR' || s === 'TIMED_OUT') {
         if (settled) status('reconnecting');
@@ -71,14 +71,14 @@ export function createSession({ client, selfId, profile, motion, startRoom = 1, 
   function tryJoin(n) {
     return new Promise((resolve) => {
       if (closed) { resolve({ others: 0, subscribed: false, leave: async () => {} }); return; }
-      let done = false, timer = null, subscribed = false;
+      let done = false, timer = null, subscribed = false, closedEarly = false;
       function finish(list) {
         if (done) return;
         done = true;
         clearTimeout(timer);
-        resolve({ others: list.length, subscribed, leave: async () => { await client.removeChannel(ch); } });
+        resolve({ others: list.length, subscribed, closedEarly, leave: async () => { await client.removeChannel(ch); } });
       }
-      const ch = openRoom(n, { onFirstSync: finish, onSubscribed: () => { subscribed = true; } });
+      const ch = openRoom(n, { onFirstSync: finish, onStatus: (st) => { subscribed = st === 'SUBSCRIBED'; closedEarly = st === 'CLOSED'; } });
       roomCh = ch;
       timer = setTimeout(() => finish(peersFrom(ch)), SYNC_WAIT);
     });
@@ -109,6 +109,7 @@ export function createSession({ client, selfId, profile, motion, startRoom = 1, 
     if (!closed) {
       settled = true;
       status(r.subscribed ? 'online' : 'reconnecting');
+      if (r.closedEarly) recreate();
     }
     return { room: r.room, moved: r.moved, wanted: r.wanted };
   });
