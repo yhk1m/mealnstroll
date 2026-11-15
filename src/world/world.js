@@ -1070,10 +1070,14 @@ export function createWorld({ canvas, reduced = false, onWeather } = {}) {
     }
     // Small lights in the trees next to the paths.
     const lit = free.filter((t) => t.near && courseDots.some((p) => Math.hypot(p[0] - t.x, p[1] - t.z) < 11)).slice(0, 110);
-    lit.forEach((t) => {
+    // Ordered by the tree's quality rank (after the fir lights), so low quality can stop
+    // drawing the bulbs of the trees it leaves out.
+    const firBulbs = bulbLists[0].length / 3, bulbRanks = [];
+    lit.slice().sort((a, b) => a.q - b.q).forEach((t) => {
       const tree = treeOf(t.kind, t.v), cs = Math.cos(t.rot), sn = Math.sin(t.rot);
       tree.tips.forEach((p, i) => {
         if (i % 2) return;
+        bulbRanks.push(t.q);
         const x = p.x * t.s, z = p.z * t.s;
         bulbLists[0].push(t.x + x * cs + z * sn, groundY(t.x, t.z) + p.y * t.s, t.z - x * sn + z * cs);
       });
@@ -1084,6 +1088,7 @@ export function createWorld({ canvas, reduced = false, onWeather } = {}) {
       const m = new THREE.PointsMaterial({ map: dot, color: bulbColors[i], size: i === 0 ? 0.42 : 0.62, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
       const pts = new THREE.Points(g, m);
       pts.frustumCulled = false;
+      if (i === 0) Object.assign(pts.userData, { firBulbs, bulbRanks });
       xmas.group.add(pts);
       xmas.mats.push(m);
     });
@@ -1263,6 +1268,7 @@ export function createWorld({ canvas, reduced = false, onWeather } = {}) {
       renderer.setPixelRatio(Math.min(devicePixelRatio || 1, q.maxDpr));
       scene.traverse((o) => {
         if (o.isInstancedMesh && o.userData.ranks) o.count = o.userData.ranks.filter((r) => r < q.treeShare).length;
+        if (o.isPoints && o.userData.bulbRanks) o.geometry.setDrawRange(0, o.userData.firBulbs + o.userData.bulbRanks.filter((r) => r < q.treeShare).length);
         // Fallen-leaf stains and litter belong to a tree: squash the ones whose tree is gone.
         if (o.isInstancedMesh && o.userData.hideRanks) {
           const arr = o.instanceMatrix.array;
