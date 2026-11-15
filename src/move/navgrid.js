@@ -18,10 +18,16 @@ export function createNavGrid({ bounds, blocked, cell = 1 }) {
   const W = Math.ceil((bounds.maxX - bounds.minX) / cell);
   const H = Math.ceil((bounds.maxZ - bounds.minZ) / cell);
   const open = new Uint8Array(W * H);
+  // Bounding box of each ring grown by PAD: cells outside it cannot be blocked by that ring.
+  const boxes = blocked.map((r) => {
+    let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+    for (const [x, z] of r) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (z < z0) z0 = z; if (z > z1) z1 = z; }
+    return { r, x0: x0 - PAD, z0: z0 - PAD, x1: x1 + PAD, z1: z1 + PAD };
+  });
   for (let j = 0; j < H; j++) {
     for (let i = 0; i < W; i++) {
       const x = bounds.minX + (i + 0.5) * cell, z = bounds.minZ + (j + 0.5) * cell;
-      open[j * W + i] = blocked.some((r) => inPoly(x, z, r) || nearEdge(x, z, r, PAD)) ? 0 : 1;
+      open[j * W + i] = boxes.some((q) => x >= q.x0 && x <= q.x1 && z >= q.z0 && z <= q.z1 && (inPoly(x, z, q.r) || nearEdge(x, z, q.r, PAD))) ? 0 : 1;
     }
   }
   const ci = (x) => Math.floor((x - bounds.minX) / cell);
