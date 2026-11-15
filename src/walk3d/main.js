@@ -63,7 +63,7 @@ if (!Number.isInteger(outfit) || outfit < 0 || outfit >= LOOKS.length) {
 }
 
 // ---------- 4. my motion ----------
-let myMotion = { kind: 'course', course: 'track', speed: PACES.normal, t0: serverNow(), offset: courses.track.loop * 0.42 };
+let myMotion = { kind: 'course', course: 'track', speed: PACES.normal, t0: serverNow(), offset: Math.round(courses.track.loop * 4.2) / 10 };
 let pace = 'normal';
 function setMyMotion(m) {
   myMotion = m;
@@ -84,6 +84,14 @@ function courseNow(m, now) {
   return null;
 }
 
+// Frees a character's own geometry and materials (the shared toon ramp texture is left alone).
+function disposePerson(obj) {
+  obj.traverse((o) => {
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach((m) => m.dispose());
+  });
+}
+
 // ---------- my walker ----------
 let me = makePerson(LOOKS[outfit], PERSON_SCALE);
 me.add(world.faceLight);
@@ -99,6 +107,8 @@ function setProfile(p) {
     next.rotation.y = me.rotation.y;
     next.add(world.faceLight);
     world.scene.remove(me);
+    me.remove(world.faceLight);
+    disposePerson(me);
     world.scene.add(next);
     me = next;
   }
@@ -127,8 +137,10 @@ drawCourseLine('track');
 function walkTo(x, z, then) {
   const now = serverNow();
   const here = positionAt(myMotion, now);
-  const pts = grid.findPath([here.x, here.z], [x, z]);
+  let pts = grid.findPath([here.x, here.z], [x, z]);
   if (!pts || pts.length < 2) return false; // unreachable or too winding: stay
+  // The path starts at a grid cell when I stand off the grid: start from where I really am.
+  if (Math.hypot(pts[0][0] - here.x, pts[0][1] - here.z) > 0.2 && pts.length < 32) pts = [[round1(here.x), round1(here.z)], ...pts];
   setMyMotion({ kind: 'go', pts, speed: PACES[pace] * 1.25, t0: now, ...(then ? { then } : {}) });
   const end = pts[pts.length - 1];
   world.marker.visible = true;
@@ -172,7 +184,8 @@ function settleGo(now) {
   const m = myMotion;
   if (m.kind !== 'go' || now <= goEnd(m)) return;
   world.marker.visible = false;
-  if (m.then) setMyMotion({ kind: 'course', course: m.then.course, speed: PACES[pace], t0: Math.round(goEnd(m)), offset: m.then.offset });
+  // Continue from where I am now (after a hidden tab this may be well past the arrival).
+  if (m.then) { const c = courseNow(m, now); setMyMotion({ kind: 'course', course: c.course, speed: PACES[pace], t0: Math.round(now), offset: round1(c.offset) }); }
   else leaveCourse();
 }
 
@@ -186,14 +199,15 @@ function setView(v) {
 setView('walk');
 const orbit = { az: 0.55, polar: 1.02, r: 330, walkAz: 0, walkPitch: 0, walkR: 6.2, faceR: 3.1 };
 const pointers = new Map();
-let downX = 0, downY = 0, moved = 0, pinch = 0;
+let downX = 0, downY = 0, moved = 0, pinch = 0, multi = false;
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 canvas.style.touchAction = 'none';
 canvas.addEventListener('pointerdown', (e) => {
+  if (e.pointerType === 'mouse' && e.button !== 0) return; // only the main button walks or turns
   try { canvas.setPointerCapture(e.pointerId); } catch { /* synthetic pointer */ }
   ui?.closePanel?.();
   pointers.set(e.pointerId, [e.clientX, e.clientY]);
-  downX = e.clientX; downY = e.clientY; moved = 0; pinch = 0;
+  if (pointers.size === 1) { downX = e.clientX; downY = e.clientY; moved = 0; pinch = 0; multi = false; } else multi = true;
 });
 canvas.addEventListener('pointermove', (e) => {
   const prev = pointers.get(e.pointerId);
@@ -225,7 +239,8 @@ function zoom(k) {
 }
 canvas.addEventListener('wheel', (e) => { e.preventDefault(); zoom(Math.exp(e.deltaY * 0.001)); }, { passive: false });
 const release = (e) => {
-  const wasTap = pointers.size === 1 && moved < 5;
+  if (!pointers.has(e.pointerId)) return;
+  const wasTap = pointers.size === 1 && moved < 5 && !multi;
   pointers.delete(e.pointerId);
   if (wasTap && e.type === 'pointerup') tap(e.clientX, e.clientY);
 };
@@ -253,8 +268,12 @@ function laneOf(id) {
   return ((h >>> 0) / 4294967295 - 0.5); // -0.5..+0.5 m
 }
 const onCourseNow = (m, now) => m.kind === 'course' || (m.kind === 'go' && !!m.then && now >= goEnd(m));
-function removePeer(id, v) {
+function dropShapes(v) {
   world.scene.remove(v.near, v.far);
+  disposePerson(v.near); disposePerson(v.far);
+}
+function removePeer(id, v) {
+  dropShapes(v);
   peers.delete(id);
 }
 function syncPeers(list) {
@@ -263,7 +282,7 @@ function syncPeers(list) {
     seen.add(p.id);
     let v = peers.get(p.id);
     if (!v || v.outfit !== p.outfit) {
-      if (v) world.scene.remove(v.near, v.far);
+      if (v) dropShapes(v);
       const look = LOOKS[p.outfit] || LOOKS[0];
       v = { near: makePerson(look, PERSON_SCALE), far: makeFarPerson(look), outfit: p.outfit, last: v?.last || null, motion: v?.motion || null, lane: v?.lane || 0, laneTo: laneOf(p.id) };
       v.far.visible = false;
@@ -274,11 +293,14 @@ function syncPeers(list) {
     v.name = p.name;
     v.joinedAt = p.joinedAt;
     if (p.motion) v.motion = p.motion;                 // a bad record keeps the last good one
-    else if (!v.motion) v.motion = v.last ? { kind: 'idle', at: [v.last.x, v.last.z], face: v.last.heading } : { kind: 'idle', at: [0, 0], face: 0 };
+    else if (v.last) v.motion = { kind: 'idle', at: [round1(v.last.x), round1(v.last.z)], face: v.last.heading };
+    else if (!v.motion) v.motion = { kind: 'idle', at: [0, 0], face: 0 };
   }
   for (const [id, v] of peers) if (!seen.has(id)) leaveLater(id, v);
-  ui?.setCount?.(peers.size + 1);
+  ui?.setCount?.(peopleHere());
 }
+// People in the room now: me plus everyone not on their way out.
+const peopleHere = () => 1 + [...peers.values()].filter((v) => !v.goneAt).length;
 // Someone missing from the list keeps walking for 30 s; if they come back in time nothing changes.
 function leaveLater(id, v) {
   if (!v.goneAt) v.goneAt = Date.now();
@@ -286,7 +308,9 @@ function leaveLater(id, v) {
 function sweepPeers() {
   if (netStatus === 'reconnecting') return; // our own link is down: the list says nothing
   const now = Date.now();
-  for (const [id, v] of peers) if (v.goneAt && now - v.goneAt > KEEP_MS) removePeer(id, v);
+  let removed = false;
+  for (const [id, v] of peers) if (v.goneAt && now - v.goneAt > KEEP_MS) { removePeer(id, v); removed = true; }
+  if (removed) ui?.setCount?.(peopleHere());
 }
 setInterval(sweepPeers, 5000);
 
@@ -309,10 +333,10 @@ function drawPeers(dt) {
     // Nobody walks through the lens.
     if (viewMode !== 'aerial' && d < 1.2) v.near.visible = v.far.visible = false;
     const obj = far ? v.far : v.near;
-    obj.position.set(x, y, z);
+    if (far && frameNo % 2 === 0) v.bob = p.moving ? Math.abs(Math.sin(now / 160)) * 0.02 : 0; // far bob: every other frame
+    obj.position.set(x, y + (far ? v.bob || 0 : 0), z);
     obj.rotation.y = angLerp(obj.rotation.y, p.heading, k);
     if (!far) animatePerson(v.near, dt, p.speed);
-    else if (frameNo % 2 === 0) obj.position.y += p.moving ? Math.abs(Math.sin(now / 160)) * 0.02 : 0;
     v.near.userData.hat.visible = world.xmas;
   }
 }
@@ -373,11 +397,23 @@ function setQuality(level, save) {
   world.setQuality(QUALITY[level]);
   if (save) saveQuality(level);
 }
+// A hidden tab draws nothing, so wait until it is seen and measure again if it gets hidden meanwhile.
+async function measureVisible() {
+  for (;;) {
+    if (document.hidden) await new Promise((r) => document.addEventListener('visibilitychange', function on() { if (!document.hidden) { document.removeEventListener('visibilitychange', on); r(); } }));
+    let hid = false;
+    const mark = () => { if (document.hidden) hid = true; };
+    document.addEventListener('visibilitychange', mark);
+    const fps = await measureFps();
+    document.removeEventListener('visibilitychange', mark);
+    if (!hid && !document.hidden) return fps;
+  }
+}
 async function pickQuality() {
   if (QUALITY[params.get('q')]) return setQuality(params.get('q')); // hidden override for checks
   const saved = loadSavedQuality();
   if (saved !== 'high' && saved !== 'low') world.setQuality(QUALITY.high); // measure from the full picture
-  const fps = saved === 'high' || saved === 'low' ? 60 : await measureFps();
+  const fps = saved === 'high' || saved === 'low' ? 60 : await measureVisible();
   setQuality(decideQuality({ saved, fps, mobile: isMobile() }));
 }
 
@@ -429,7 +465,9 @@ async function start() {
   setInterval(() => fetchLiveWeather().then((l) => world.setLive(l)).catch(() => {}), 15 * 60 * 1000);
   setInterval(() => world.tickClock(), 60 * 1000);
 
-  const offset = await syncServerClock();
+  // A stalled /api/time must not hold up joining: each try gives up after 2 s.
+  const fetchFn = (url, opts) => fetch(url, { ...opts, signal: typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(2000) : undefined });
+  const offset = await syncServerClock({ fetchFn });
   // Re-base what is already moving so nothing jumps when the clock shifts.
   if (myMotion.t0 !== undefined) myMotion = { ...myMotion, t0: myMotion.t0 + offset };
   clockOffset = offset;
@@ -443,7 +481,7 @@ async function start() {
       notice: () => {}, chat: () => {}
     }
   });
-  session.ready.then((r) => { currentRoom = r.room || currentRoom; ui?.showRoom?.(r, peers.size + 1); });
+  session.ready.then((r) => { currentRoom = r.room || currentRoom; ui?.showRoom?.(r, peopleHere()); });
   addEventListener('pagehide', (e) => { if (!e.persisted) session.leave(); });
 }
 start();
